@@ -1,0 +1,27 @@
+# 密钥与运行数据，绝不要提交到仓库
+config.json
+metadata.json
+proxy-events.log
+*.log
+data/
+_testenv/
+
+# 依赖与构建产物
+node_modules/
+dist/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 本地草稿
+_tmp/
+
+# 本地手工备份（含明文 key 与个人记录，绝不入库）
+*.bak
+*.bak_*
+
+# 个人交接文档与本地脚本（只留在本机，不随公开版发布）
+HANDOFF.md
+auto-router.js
+开控制台.cmd

@@ -1,0 +1,1773 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>通行证机房 · Cline Pass 上游控制台</title>
+<style>
+  /* —— 拉米尔之夜：黑丝绒 / 红鞋底 / 银星 / 裸粉 —— */
+  :root {
+    --bg: #161216; --bg-soft: #1c171b;
+    --card: #1f191d; --card2: #272026; --card3: #2e252e;
+    --line: #3a303a; --line-soft: #2f272f;
+    --text: #e9e3e7; --dim: #a89fae; --faint: #8d8290;
+    --red: #cf4a63; --red-deep: #8f2f42; --red-glow: rgba(207, 74, 99, .22);
+    --silver: #c2b8c8; --pink: #e6c6d0; --rose: #9a5872; --plum: #6f5f7f;
+    --green: #8ecfae;
+    --spring: cubic-bezier(.22, 1.2, .36, 1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scrollbar-color: #463a46 var(--bg); }
+  body { background: var(--bg); color: var(--text); font-family: "Segoe UI", "Microsoft YaHei UI", system-ui, -apple-system, sans-serif; padding: 26px 24px 90px; max-width: 1280px; margin: 0 auto; font-size: 14px; }
+  ::selection { background: var(--red-deep); color: #fff; }
+  h1 { font-size: 21px; font-weight: 600; letter-spacing: .5px; }
+  h1 .star-ico { color: var(--red); font-size: 14px; vertical-align: 3px; margin-left: 6px; }
+  .sub { color: var(--faint); font-size: 12.5px; margin-top: 5px; letter-spacing: .3px; }
+  a { color: var(--pink); }
+
+  /* —— 头部 —— */
+  header { display: flex; justify-content: space-between; align-items: flex-end; gap: 14px; flex-wrap: wrap; margin-bottom: 14px; }
+  .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .chip { background: var(--card2); border: 1px solid var(--line); border-radius: 6px; padding: 7px 12px; font-family: Consolas, monospace; font-size: 12.5px; cursor: pointer; color: var(--dim); transition: border-color .25s var(--spring), color .25s var(--spring); }
+  .chip:hover { border-color: var(--red); color: var(--text); }
+  button { background: var(--red); border: none; color: #fff; border-radius: 6px; padding: 7px 14px; font-size: 13px; cursor: pointer; transition: transform .3s var(--spring), filter .2s; }
+  button:hover { filter: brightness(1.12); transform: translateY(-1px); }
+  button:active { transform: translateY(0) scale(.97); }
+  button.ghost { background: transparent; border: 1px solid var(--line); color: var(--dim); }
+  button.ghost:hover { border-color: var(--red); color: var(--text); }
+  button:disabled { opacity: .45; cursor: wait; transform: none; }
+  button.mini { padding: 4px 9px; font-size: 12px; border-radius: 6px; min-width: 30px; }
+
+  /* —— Tab —— */
+  nav.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 16px 0 20px; }
+  nav.tabs button { background: transparent; border: none; color: var(--faint); font-size: 14px; padding: 10px 18px 12px; border-radius: 0; letter-spacing: 2px; position: relative; transition: color .25s var(--spring); }
+  nav.tabs button:hover { color: var(--silver); transform: none; filter: none; }
+  nav.tabs button.active { color: var(--text); }
+  nav.tabs button::after { content: ''; position: absolute; left: 50%; bottom: -1px; height: 2px; width: 0; background: var(--red); box-shadow: 0 0 8px var(--red-glow); transition: width .4s var(--spring), left .4s var(--spring); }
+  nav.tabs button.active::after { left: 18px; width: calc(100% - 36px); }
+  nav.tabs .tab-live { margin-left: auto; align-self: center; display: flex; align-items: center; gap: 7px; color: var(--faint); font-size: 11.5px; padding-right: 6px; }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); transition: background .4s, box-shadow .4s; }
+  .live-dot.on { background: var(--red); box-shadow: 0 0 7px var(--red-glow); animation: breathe 2.6s ease-in-out infinite; }
+  @keyframes breathe { 0%, 100% { opacity: 1; } 50% { opacity: .45; } }
+
+  section.view { display: none; }
+  section.view.active { display: block; animation: viewIn .5s var(--spring); }
+  @keyframes viewIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+  /* —— 卡片 —— */
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin-bottom: 18px; transition: border-color .35s var(--spring), transform .35s var(--spring); }
+  .card:hover { border-color: #443a44; }
+  .card h2 { font-size: 13.5px; font-weight: 600; letter-spacing: 1.5px; color: var(--silver); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .card h2::before { content: '✦'; color: var(--red); font-size: 10px; }
+  .card h2 .h2-note { font-weight: 400; letter-spacing: 0; color: var(--faint); font-size: 11.5px; margin-left: 4px; }
+  .dim { color: var(--dim); } .faint { color: var(--faint); }
+  .mono { font-family: Consolas, monospace; font-size: 12.5px; }
+  .empty { color: var(--faint); font-size: 13px; padding: 14px 10px; }
+  .banner { background: var(--bg-soft); border: 1px solid var(--line); border-left: 2px solid var(--red-deep); border-radius: 10px; padding: 12px 14px; font-size: 12.5px; line-height: 1.8; color: var(--dim); margin-bottom: 18px; }
+  .banner b { color: var(--text); }
+  details summary { cursor: pointer; color: var(--dim); font-size: 13px; user-select: none; }
+  details summary:hover { color: var(--pink); }
+
+  /* —— 汇总数字条 —— */
+  .stat-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; background: var(--line-soft); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin-bottom: 18px; }
+  .stat-cell { background: var(--card); padding: 16px 18px 14px; }
+  .stat-cell .num { font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-size: 27px; color: var(--text); letter-spacing: .5px; font-variant-numeric: tabular-nums; }
+  .stat-cell .num em { font-style: italic; font-size: 13px; color: var(--faint); margin-left: 3px; }
+  .stat-cell .lbl { color: var(--faint); font-size: 11px; letter-spacing: 2px; margin-top: 5px; }
+  .stat-cell.hot .num { color: var(--red); }
+
+  /* —— 账号卡阵 —— */
+  .deck { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; align-items: start; }
+  .acc-card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 16px 12px; cursor: pointer; transition: border-color .35s var(--spring), transform .35s var(--spring), box-shadow .35s var(--spring); position: relative; }
+  .acc-card:hover { transform: translateY(-3px); border-color: #4d3f4b; box-shadow: 0 14px 30px -18px rgba(0, 0, 0, .8); }
+  .acc-head { display: flex; align-items: center; gap: 9px; margin-bottom: 13px; }
+  .acc-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--faint); flex: none; }
+  .acc-dot.live { background: var(--red); box-shadow: 0 0 8px var(--red-glow); }
+  .acc-name { font-weight: 600; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .acc-plan { flex: none; font-size: 10.5px; letter-spacing: 1px; color: var(--silver); border: 1px solid var(--line); border-radius: 10px; padding: 2px 8px; }
+  .win-row { display: grid; grid-template-columns: 44px 1fr 40px; gap: 10px; align-items: center; margin-bottom: 9px; }
+  .win-row .w-lbl { font-size: 11px; color: var(--faint); letter-spacing: 1px; }
+  .win-row .w-pct { font-size: 11.5px; color: var(--dim); text-align: right; font-variant-numeric: tabular-nums; }
+  .w-bar { height: 5px; border-radius: 3px; background: var(--card3); overflow: hidden; }
+  .w-fill { height: 100%; border-radius: 3px; background: var(--red); width: 0; transition: width .9s var(--spring); }
+  .w-fill.mid { background: #d67386; }
+  .w-fill.low { background: var(--rose); }
+  .win-row .w-reset { grid-column: 2 / 4; font-size: 10px; color: var(--faint); margin-top: -5px; }
+  .acc-foot { display: flex; align-items: baseline; gap: 8px; margin-top: 11px; padding-top: 10px; border-top: 1px dashed var(--line-soft); font-size: 11.5px; color: var(--dim); flex-wrap: wrap; }
+  .acc-exp { font-family: Georgia, serif; font-style: italic; font-size: 13.5px; color: var(--silver); }
+  .acc-exp.soon { color: var(--red); animation: breathe 1.6s ease-in-out infinite; }
+  .src-badge { font-size: 10px; letter-spacing: 1px; padding: 1px 7px; border-radius: 8px; border: 1px solid var(--line); color: var(--faint); }
+  .src-badge.est { color: #d9a86a; border-color: #4a3a28; }
+  .acc-card.off { opacity: .62; filter: saturate(.55); }
+  .acc-card.off:hover { transform: none; box-shadow: none; }
+  .acc-off-badge { flex: none; font-size: 10.5px; letter-spacing: 1px; color: #e8b7c2; background: #3d2129; border: 1px solid #573240; border-radius: 10px; padding: 2px 9px; }
+  .acc-off-reason { font-size: 10.5px; color: var(--pink); line-height: 1.6; margin-top: 6px; opacity: .9; }
+  .acc-off-recover { display: flex; align-items: center; gap: 8px; font-size: 10.5px; color: var(--silver); line-height: 1.6; margin-top: 3px; opacity: .75; }
+  .acc-off-recover span { flex: 1; }
+  .acc-enable { margin-left: auto; flex: none; background: transparent; border: 1px solid var(--rose); color: var(--pink); border-radius: 6px; font-size: 11.5px; padding: 3px 10px; cursor: pointer; transition: background .25s, color .25s; }
+  .acc-enable:hover { background: var(--rose); color: #fff; transform: none; filter: none; }
+  .acc-refresh { margin-left: auto; flex: none; background: transparent; border: none; color: var(--faint); font-size: 13px; padding: 3px 6px; opacity: .55; transition: opacity .25s, color .25s; }
+  .acc-card:hover .acc-refresh { opacity: 1; color: var(--dim); }
+  .acc-refresh:hover { color: var(--red); filter: none; transform: none; }
+  .acc-refresh.busy { opacity: 1; color: var(--red); animation: acc-spin 1s linear infinite; }
+  @keyframes acc-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .acc-refresh.busy { animation: none; } }
+  .acc-detail { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .5s var(--spring); }
+  .acc-card.open .acc-detail { grid-template-rows: 1fr; }
+  .acc-detail > div { overflow: hidden; }
+  .acc-detail table { margin-top: 12px; width: 100%; }
+
+  /* —— 表格 —— */
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { text-align: left; color: var(--faint); font-weight: 500; padding: 7px 9px; border-bottom: 1px solid var(--line); white-space: nowrap; font-size: 11.5px; letter-spacing: .5px; }
+  td { padding: 8px 9px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; }
+  tr:hover td { background: var(--bg-soft); }
+  .num-cell { font-variant-numeric: tabular-nums; text-align: right; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; background: var(--card3); color: var(--silver); }
+  .badge.green { background: #1b2f24; color: var(--green); }
+  .badge.warn { background: #362432; color: var(--pink); }
+  select, input[type=text], input[type=password], input[type=date], input[type=number] { background: var(--card2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 6px 9px; font-size: 12.5px; }
+  select:focus, input:focus { outline: none; border-color: var(--red-deep); }
+  .row-actions { display: flex; gap: 6px; }
+  .result { margin-top: 12px; background: var(--bg-soft); border: 1px solid var(--line); border-radius: 8px; padding: 12px; font-size: 13px; line-height: 1.8; display: none; white-space: pre-wrap; word-break: break-all; }
+  .kvs { display: flex; gap: 18px; flex-wrap: wrap; margin-bottom: 8px; }
+  .kvs div { font-size: 12.5px; color: var(--dim); }
+  .kvs b { color: var(--text); font-weight: 600; }
+  .match { color: var(--green); } .mismatch { color: var(--pink); }
+  tr.row-new td { animation: newflash 4s ease-out; }
+  @keyframes newflash { 0% { background: #331e26; } 70% { background: #331e26; } 100% { background: transparent; } }
+  .spin { display: inline-block; animation: r 1s linear infinite; }
+  @keyframes r { to { transform: rotate(360deg); } }
+
+  /* —— 星图（Token 活动） —— */
+  .sky-wrap { position: relative; }
+  .sky { display: grid; grid-template-columns: repeat(auto-fill, 36px); gap: 7px; padding: 6px 2px 2px; justify-content: start; }
+  .star-cell { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; cursor: default; }
+  .star { width: var(--s, 10px); height: var(--s, 10px); background: var(--c, var(--silver)); clip-path: polygon(50% 0%, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0% 50%, 39% 39%); transition: transform .45s var(--spring), filter .45s var(--spring); }
+  .star-cell:hover .star { transform: scale(1.5); filter: drop-shadow(0 0 6px var(--c)); }
+  .star-cell .halo { width: 8px; height: 8px; border-radius: 50%; background: var(--card3); }
+  .sky-axis { display: flex; justify-content: space-between; color: var(--faint); font-size: 10.5px; padding: 8px 4px 0; letter-spacing: 1px; }
+  .sky-legend { position: absolute; top: -4px; right: 0; display: flex; align-items: center; gap: 5px; color: var(--faint); font-size: 10.5px; }
+  .sky-legend .star { width: 8px; height: 8px; }
+  #skyTip { position: fixed; z-index: 60; pointer-events: none; background: var(--card3); border: 1px solid #4d3f4b; color: var(--text); font-size: 11.5px; padding: 7px 10px; border-radius: 8px; opacity: 0; transform: translateY(4px); transition: opacity .3s var(--spring), transform .3s var(--spring); white-space: nowrap; box-shadow: 0 8px 22px rgba(0,0,0,.55); }
+  #skyTip b { color: var(--red); font-variant-numeric: tabular-nums; }
+  #skyTip.on { opacity: 1; transform: none; }
+
+  /* —— 趋势（丝带折线） —— */
+  .trend-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .range-btn { background: transparent; border: 1px solid var(--line); color: var(--faint); border-radius: 14px; padding: 4px 13px; font-size: 11.5px; }
+  .range-btn.active { border-color: var(--red); color: var(--text); background: #2e2026; }
+  .trend-legend { margin-left: auto; display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px; color: var(--dim); }
+  .trend-legend i { display: inline-block; width: 14px; height: 2px; border-radius: 1px; margin-right: 5px; vertical-align: 3px; }
+  .trend-wrap { position: relative; }
+  .trend-wrap svg { width: 100%; height: 190px; display: block; }
+  #trendTip { position: absolute; z-index: 5; pointer-events: none; background: var(--card3); border: 1px solid #4d3f4b; border-radius: 8px; padding: 8px 11px; font-size: 11.5px; opacity: 0; transition: opacity .25s var(--spring); white-space: nowrap; box-shadow: 0 8px 22px rgba(0,0,0,.55); }
+  #trendTip.on { opacity: 1; }
+  #trendTip .tt-day { color: var(--silver); margin-bottom: 4px; font-weight: 600; }
+  #trendTip .tt-row { display: flex; justify-content: space-between; gap: 16px; }
+  #trendTip .tt-row b { font-variant-numeric: tabular-nums; }
+
+  /* —— 缎带（模型占比） —— */
+  .ribbon { display: flex; height: 26px; border-radius: 8px; overflow: hidden; gap: 3px; margin: 4px 0 14px; }
+  .rb-seg { flex-grow: var(--g, 1); flex-basis: 0; min-width: 6px; background: var(--c); opacity: .82; cursor: default; transition: flex-grow .6s var(--spring), opacity .3s; position: relative; }
+  .rb-seg:first-child { border-radius: 8px 0 0 8px; } .rb-seg:last-child { border-radius: 0 8px 8px 0; }
+  .rb-seg:hover { opacity: 1; flex-grow: calc(var(--g) * 1.18); }
+  .rb-seg span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 10.5px; color: #161216; font-weight: 700; opacity: 0; transition: opacity .3s; }
+  .rb-seg:hover span { opacity: .9; }
+  .rb-table td { border-bottom: none; padding: 6px 9px; }
+  .rb-table tr.hl td { background: var(--bg-soft); }
+  .rb-table .rb-swatch { width: 9px; height: 9px; border-radius: 2px; display: inline-block; margin-right: 8px; vertical-align: 0; }
+  .rb-pct { font-family: Georgia, serif; font-style: italic; font-size: 14px; color: var(--silver); }
+
+  /* —— 明细 —— */
+  .recent-tools { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+  .recent-tools input { width: 240px; }
+  .seg-btn { background: transparent; border: 1px solid var(--line); color: var(--faint); border-radius: 6px; padding: 4px 12px; font-size: 11.5px; }
+  .seg-btn.active { border-color: var(--red); color: var(--text); background: #2e2026; }
+  .attempts-cell { color: var(--faint); font-size: 11px; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* —— 上游优先级/排除面板（机房） —— */
+  .ups-wrap summary { list-style: none; cursor: pointer; padding: 4px 0; display: block; }
+  .ups-wrap summary::-webkit-details-marker { display: none; }
+  .ups-wrap summary::before { content: '▸ '; color: var(--faint); }
+  .ups-wrap[open] summary::before { content: '▾ '; }
+  .ups-panel { background: var(--bg-soft); border: 1px solid var(--line); border-radius: 8px; padding: 6px; max-height: min(520px, 65vh); overflow-y: auto; min-width: 430px; }
+  .uprow { display: flex; align-items: center; gap: 10px; padding: 7px 6px; font-size: 12.5px; border-bottom: 1px dashed var(--line-soft); min-height: 40px; flex-wrap: nowrap; }
+  .uprow:last-child { border-bottom: none; }
+  .uprow.excluded .upslug, .uprow.excluded .upname { opacity: .5; }
+  .upno { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--card); border: 1px solid var(--line); color: var(--pink); font-weight: 700; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; }
+  .uprank { flex: none; min-width: 28px; color: var(--faint); font-family: Consolas, monospace; font-size: 12px; }
+  .upinfo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+  .upname { color: var(--faint); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .upmetric { color: var(--faint); font-size: 11px; line-height: 1.5; }
+  .provider-link { background: #42292f; color: var(--pink); border: 1px solid var(--rose); padding: 1px 5px; font-family: Consolas, monospace; border-radius: 4px; font-size: 12px; cursor: pointer; }
+  .provider-link:hover, .provider-link:focus-visible { background: #55323c; outline: 1px solid var(--red); }
+  #customUpstream { background: var(--card2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; width: 220px; }
+  .metrics-note { padding: 6px; color: var(--faint); font-size: 11px; max-width: 480px; line-height: 1.5; }
+  .upstat { flex: none; font-size: 11.5px; min-width: 52px; text-align: right; }
+  .upstat.ok { color: var(--green); } .upstat.limited { color: var(--pink); } .upstat.bad { color: var(--red); } .upstat.auth { color: var(--red); } .upstat.unknown { color: var(--faint); }
+  .upstat.excl { color: var(--red); font-weight: 600; }
+  .pill { flex: none; border: 1px solid var(--line); background: transparent; color: var(--dim); border-radius: 15px; padding: 5px 14px; font-size: 12px; cursor: pointer; min-width: 56px; text-align: center; line-height: 1; transition: all .3s var(--spring); }
+  .pill:hover { border-color: var(--red); color: var(--text); transform: none; filter: none; }
+  .pill.prio-on { background: var(--red); border-color: var(--red); color: #fff; }
+  .pill.excl-on { background: var(--red-deep); border-color: var(--red-deep); color: #fff; }
+  .ups-tools { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .ups-sum { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 2px 0; }
+  .ups-sum .sum-auto { color: var(--faint); font-size: 12px; }
+  .ups-sum .sum-chip { background: var(--card3); color: var(--silver); border-radius: 10px; padding: 2px 9px; font-size: 11.5px; font-family: Consolas, monospace; white-space: nowrap; }
+  .ups-sum .sum-chip.sum-more { background: var(--card2); color: var(--faint); }
+  .ups-sum .sum-chip.sum-ex { background: #42292f; color: var(--pink); }
+  .trace { margin-top: 8px; font-size: 12.5px; word-break: break-all; }
+  .trace .tr { font-family: Consolas, monospace; }
+  .trace .tr.ok { color: var(--green); }
+  .trace .tr.bad { color: var(--pink); }
+
+
+  #speedResult { white-space: normal; overflow-x: auto; word-break: normal; line-height: 1.45; }
+  #speedResult .speed-table-wrap { overflow-x: auto; margin-top: 8px; }
+  #speedResult table { table-layout: fixed; min-width: 850px; font-size: 12px; }
+  #speedResult th, #speedResult td { padding: 7px 5px; white-space: normal; overflow-wrap: anywhere; }
+  #speedResult th:nth-child(1) { width: 36px; }
+  #speedResult th:nth-child(2) { width: 130px; }
+  #speedResult th:nth-child(3) { width: 42px; }
+  #speedResult th button { width: 100%; padding: 4px 0; border: 0; background: transparent; font-size: 12px; white-space: normal; line-height: 1.4; color: var(--dim); }
+  #speedResult td.speed-number { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  #speedResult .speed-notes { overflow-wrap: anywhere; }
+  #speedResult .speed-notes details div { max-height: 200px; overflow-y: auto; }
+  #speedResult details { margin-top: 10px; }
+  #speedResult details div { white-space: pre-wrap; }
+
+  #loginOverlay { position: fixed; inset: 0; background: rgba(14, 11, 14, .92); z-index: 90; display: none; align-items: center; justify-content: center; }
+  #loginOverlay .login-box { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 30px; width: 370px; }
+  #loginOverlay h2 { font-size: 16px; margin-bottom: 6px; font-family: Georgia, serif; font-style: italic; letter-spacing: 1px; }
+
+  @media (max-width: 720px) {
+    body { padding: 16px 12px 40px; }
+    .deck { grid-template-columns: 1fr; }
+    .stat-cell .num { font-size: 21px; }
+  }
+</style>
+</head>
+<body>
+  <div id="loginOverlay">
+    <div class="login-box">
+      <h2>通行证机房</h2>
+      <p class="dim" style="font-size:13px; margin:10px 0 14px;">这间机房上了锁。请输入代理密钥。</p>
+      <input id="loginKey" type="password" placeholder="代理密钥" style="width:100%; font-size:14px;">
+      <div id="loginErr" style="color:var(--red); font-size:12px; margin-top:6px;"></div>
+      <button style="width:100%; margin-top:12px;" onclick="tryLogin()">进入机房</button>
+    </div>
+  </div>
+
+  <header>
+    <div>
+      <h1>通行证机房<span class="star-ico">✦</span></h1>
+      <div class="sub">Cline Pass 上游观测 · 用量账本 · Token 星图 —— 本地代理 + 多上游故障转移</div>
+    </div>
+    <div class="toolbar">
+      <span class="chip" id="proxyBase" title="点击复制：把任意 OpenAI 兼容客户端的 Base URL 指向这里"></span>
+      <button class="ghost" id="numToggle" title="切换完整数字与亿/万简写"></button>
+      <button class="ghost" onclick="loadAll(true)" title="重新拉取全部数据">↻ 刷新</button>
+      <span class="dim" style="font-size:12px" id="status"></span>
+    </div>
+  </header>
+
+  <div id="noKeyBanner" class="banner" style="display:none; border-left-color: var(--red);">
+    <b>尚未配置上游 API Key：</b>到「机房 → 账号管理」添加你的 Cline Pass 账号（sk_ 开头的 key）并保存即可开始使用；也可通过 config.json 的 accounts 或环境变量 CLINE_PASS_KEY 提供。
+  </div>
+
+  <nav class="tabs">
+    <button id="tab-overview" class="active" onclick="switchTab('overview')">总 览</button>
+    <button id="tab-lab" onclick="switchTab('lab')">机 房</button>
+    <span class="tab-live"><span class="live-dot" id="liveDot"></span><span id="liveTxt">账本待命</span></span>
+  </nav>
+
+  <!-- ================= 总览 ================= -->
+  <section class="view active" id="view-overview">
+    <div class="stat-strip" id="statStrip"></div>
+
+    <div class="card">
+      <h2>账号席位<span class="h2-note" id="planMeta"></span></h2>
+      <div class="deck" id="deck"><div class="empty">正在调官方账本……</div></div>
+    </div>
+
+    <div class="card">
+      <h2>Token 星图<span class="h2-note">每天的星星越大越亮，烧得越多</span></h2>
+      <div class="sky-wrap">
+        <div class="sky-legend" id="skyLegend"></div>
+        <div class="sky" id="sky"></div>
+        <div class="sky-axis" id="skyAxis"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>每日 Token 丝带</h2>
+      <div class="trend-head">
+        <button class="range-btn" data-r="7" onclick="setTrendRange(7)">近 7 日</button>
+        <button class="range-btn active" data-r="30" onclick="setTrendRange(30)">近 30 日</button>
+        <button class="range-btn" data-r="0" onclick="setTrendRange(0)">全部</button>
+        <div class="trend-legend" id="trendLegend"></div>
+      </div>
+      <div class="trend-wrap" id="trendWrap">
+        <svg id="trendSvg" viewBox="0 0 1000 190" preserveAspectRatio="none" aria-label="每日 token 趋势"></svg>
+        <div id="trendTip"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>模型缎带<span class="h2-note">一段一模型，宽度就是它吃掉的份额</span></h2>
+      <div class="ribbon" id="ribbon"></div>
+      <table class="rb-table"><tbody id="rbBody"></tbody></table>
+    </div>
+
+    <div class="card">
+      <h2>最近明细<span class="h2-note" id="detailNote"></span></h2>
+      <div class="recent-tools">
+        <input id="recentFilter" placeholder="过滤：账号 / 模型 / 上游关键字…" type="text">
+        <button class="seg-btn active" data-n="30" onclick="setRecentLimit(30)">30 条</button>
+        <button class="seg-btn" data-n="100" onclick="setRecentLimit(100)">100 条</button>
+      </div>
+      <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>时间</th><th>模型</th><th>账号</th><th>实际上游</th><th>背后模型</th><th>方式</th><th>耗时</th><th>尝试序列</th><th style="text-align:right">输入（缓存）</th><th style="text-align:right">输出</th><th style="text-align:right">合计</th></tr></thead>
+        <tbody id="recentBody"><tr><td colspan="11" class="empty">暂无记录</td></tr></tbody>
+      </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 机房 ================= -->
+  <section class="view" id="view-lab">
+    <div class="card">
+      <h2>账号管理<span class="h2-note">Cline Pass 账号池</span></h2>
+      <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px; flex-wrap:wrap;">
+        <label class="dim" style="font-size:13px">模式：</label>
+        <select id="accMode">
+          <option value="single">单账号（手动指定）</option>
+          <option value="roundrobin">账号池轮询</option>
+          <option value="smart" title="每次请求优先发给本月额度用得最少的账号；5 小时/本周窗口快打满的会先跳过，几个号的用量自动拉平">账号池·额度调度（用得少的先用）</option>
+        </select>
+        <label class="dim" style="font-size:12px"><input type="checkbox" id="accShowKeys" onchange="toggleKeyVis()"> 显示密钥</label>
+        <button class="ghost" onclick="addAccountRow()">＋ 添加账号</button>
+        <button class="ghost" onclick="autoTrim(this)" title="对每个账号发一条真实小请求，自动禁用额度满/密钥坏的账号（网络失败只报告不禁用；已经恢复的号会被顺手放回轮询）">✦ 体检并禁用失效账号</button>
+        <label class="dim" style="font-size:12px" title="被自动禁用的号按 15 分钟～2 小时退避自己复检，一旦真能用了就自动放回轮询；密钥无效（auth）的号不在此列，必须换 key"><input type="checkbox" id="accAutoRecover"> 自动恢复</label>
+        <button class="ghost" onclick="recoverNow(this)" title="不等退避时间，立刻对每个已禁用的号发一条极小请求复检，通了就放回轮询">✦ 立刻复检</button>
+        <button onclick="saveAccounts()">保存账号配置</button>
+        <span class="dim" style="font-size:12px" id="accMsg"></span>
+      </div>
+      <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>使用</th><th>名称</th><th>API Key</th><th>启用</th><th>订阅日（月付起算，留空=导入日）</th><th>请求数</th><th>最近使用</th><th>操作</th></tr></thead>
+        <tbody id="accBody"><tr><td colspan="8" class="empty">加载中…</td></tr></tbody>
+      </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>访问与安全<span class="h2-note">下游密钥</span></h2>
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <label class="dim" style="font-size:13px">代理密钥：</label>
+        <input id="secProxyKey" type="password" placeholder="空 = 关闭鉴权" style="width:340px; font-family:Consolas, monospace; font-size:13px">
+        <label class="dim" style="font-size:12px"><input type="checkbox" id="secShow" onchange="$('#secProxyKey').type=this.checked?'text':'password'"> 显示</label>
+        <span id="secBadge" class="badge"></span>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center; margin-top:8px; flex-wrap:wrap;">
+        <label class="dim" style="font-size:13px">公网代理地址：</label>
+        <input id="secPublicBase" placeholder="如 https://cline.xxx.sslip.io（本地留空）" style="width:340px; font-family:Consolas, monospace; font-size:13px">
+      </div>
+      <div style="display:flex; gap:10px; align-items:center; margin-top:12px; flex-wrap:wrap;">
+        <button onclick="saveSecurity()">保存访问设置</button>
+        <span class="dim" style="font-size:12px">修改密钥后，客户端需改用新密钥；控制台会自动更新本机保存的密钥，不会被锁在外面。</span>
+        <span class="dim" style="font-size:12px" id="secMsg"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <h2 style="margin:0">订阅模型<span class="h2-note">cline-pass/* 路由与上游优先级</span></h2>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <span class="dim" style="font-size:12px" id="officialInfo"></span>
+          <button class="ghost" onclick="fetchOfficial(this)" title="从官方文档与社区注册表拉取最新订阅模型清单并合并（只增不删）">⬇ 拉取官方最新模型</button>
+        </div>
+      </div>
+      <div class="result" id="fetchResult" style="display:none; margin-bottom:12px;"></div>
+      <details style="margin: 8px 0 10px;"><summary class="faint" style="font-size:12px;">实测结论（为什么这个工具这样工作）</summary>
+        <div class="banner" style="margin-top:8px;">
+          ① <b>上游可枚举、可观测</b>：订阅模型响应元数据里带背后真正的模型 ID、可用上游列表与本次实际命中的上游；「探测」用一次零 token 的假上游请求让网关报出精确的可用上游清单（直连→OpenRouter，规划器→Vercel AI Gateway）。<br>
+          ② <b>两类管道都能精确钉住上游</b>：直连管道（OpenRouter）用顶层 <code class="mono">provider.only / order</code>；规划器管道（Vercel AI Gateway）必须用 <code class="mono">providerOptions.gateway.only / order</code>。两类管道都支持 <code class="mono">sort</code>（成本 / 首字 / 吞吐）。<br>
+          ③ <b>目录模型 :free 变体</b>：属于直连管道，可精确钉住。<br>
+          ④ <b>多上游优先级 + 故障转移</b>：勾选多个上游即按勾选顺序逐个尝试，第一个异常自动顺切下一个；「排除」的上游永不被使用。流式请求在 SSE 开始前可切换，开始后透传不可重试。
+        </div>
+      </details>
+      <p class="faint" style="font-size:12px; line-height:1.6; margin:6px 0 10px;">排名按当前列表顺序编号；按指标排序时，有数据的上游在前，其余保持原顺序。排名不改变手动设置的尝试优先级。</p>
+      <div style="overflow-x:auto">
+      <table>
+        <thead><tr>
+          <th>模型</th><th>背后模型</th><th>上游数</th><th>最近实际上游</th><th>上游优先级 / 排除（多选）</th><th>模式 / 排序</th><th>操作</th>
+        </tr></thead>
+        <tbody id="subBody"><tr><td colspan="7" class="empty">加载中…</td></tr></tbody>
+      </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>测试台<span class="h2-note">发一条真实请求，验证目标上游是否被网关采纳</span></h2>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <select id="testModel" style="min-width:240px"></select>
+        <select id="testUpstream" style="min-width:200px"><option value="">自动（不指定上游）</option></select>
+        <input id="customUpstream" aria-label="自定义上游" placeholder="自定义上游 slug（填写后优先）" maxlength="128">
+        <button class="ghost" onclick="watchCustomUpstream(this)">加入监查列表</button>
+        <button onclick="runTest()" id="testBtn">发送测试</button>
+        <span class="dim" style="font-size:12px">max_tokens=256 的小请求，消耗极小</span>
+      </div>
+      <div class="result" id="testResult"></div>
+    </div>
+
+    <div class="card">
+      <h2>上游测速</h2>
+      <p class="faint" style="font-size:12px; line-height:1.7; margin-bottom:10px;">默认全选当前订阅模型的上游，按选择逐个测速并实时填表；每个上游最多生成 1024 token，会消耗订阅额度。完成后按生成速度降序；点击表头切换排序。生成速度＝输出 token ÷ 首个至最后生成片段的时间；体感均速＝输出 token ÷ 含等待的全程时间。缺失数据静默隐藏。</p>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <select id="speedModel" aria-label="测速模型" style="min-width:240px"></select>
+        <button class="ghost" id="speedAllBtn" onclick="selectSpeedUpstreams(true)">全选上游</button>
+        <button class="ghost" id="speedNoneBtn" onclick="selectSpeedUpstreams(false)">清空选择</button>
+        <button class="ghost" id="speedProbeBtn" onclick="probeSpeedModel()">探测供应商</button>
+        <button id="speedBtn" onclick="runSpeedTest()">开始批量测速</button>
+      </div>
+      <div id="speedUpstreams" style="display:flex; gap:12px; flex-wrap:wrap; margin-top:12px" aria-label="测速供应商（多选）"></div>
+      <div class="result" id="speedResult" aria-live="polite"></div>
+    </div>
+
+    <div class="card">
+      <h2>完整模型目录<span class="h2-note">Cline 公开目录，含 :free 可钉住模型</span></h2>
+      <div style="margin-bottom:10px">
+        <label class="dim" style="font-size:13px"><input type="checkbox" id="exposeCatalog" onchange="saveExposeCatalog(this.checked)"> 把目录模型加入代理的 /v1/models（默认关闭：客户端只看到订阅模型）</label>
+      </div>
+      <details>
+        <summary id="catSummary">展开</summary>
+        <input id="catFilter" placeholder="输入过滤… 如 free / glm / anthropic" style="margin:10px 0; width:300px; display:block">
+        <table><tbody id="catBody"></tbody></table>
+      </details>
+    </div>
+  </section>
+
+
+  <div id="skyTip"></div>
+
+<script>
+let DATA = null;
+let AUTH_KEY = localStorage.getItem('cps_key') || '';
+const $ = (s) => document.querySelector(s);
+const fmt = (ts) => new Date(ts).toLocaleTimeString();
+const escapeHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+// 账号显示短名：user@example.com → user（下拉/角标省地方，值仍是全名）
+const shortAcc = (n) => String(n || '').replace(/@.*$/, '');
+// 数字写法全局开关：short = 2.04 亿（默认，一眼懂）；full = 201,664,404（想数零时用）
+// 顶部按钮切换，记在 localStorage cps_num
+let NUM_MODE = localStorage.getItem('cps_num') === 'full' ? 'full' : 'short';
+const numRaw = (n) => (n || 0).toLocaleString('en-US');
+// 时间显示统一走这里：中文习惯的「10月5日 05:39」。
+// （旧的 sv 局部格式在实机上渲染成 05/10：日在前、月在后，一眼看反，所以统一走上面的 fmtDT）
+const fmtDT = (v) => { const d = typeof v === 'number' ? v : Date.parse(v); return Number.isFinite(d) ? new Date(d).toLocaleString('zh-CN', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''; };
+const numShort = (n) => {
+  n = n || 0;
+  if (n >= 1e8) return (n / 1e8).toFixed(2) + ' 亿';
+  if (n >= 1e4) return (n / 1e4).toFixed(1) + ' 万';
+  return numRaw(n);
+};
+const num = (n) => (NUM_MODE === 'full' ? numRaw(n) : numShort(n || 0));
+
+async function api(path, body) {
+  const headers = body ? { 'Content-Type': 'application/json' } : {};
+  if (AUTH_KEY) headers['X-Admin-Key'] = AUTH_KEY;
+  const res = await fetch(path, body ? { method: 'POST', headers, body: JSON.stringify(body) } : { headers });
+  if (res.status === 401) { showLogin(); throw new Error('unauthorized'); }
+  return res.json();
+}
+
+function showLogin() { $('#loginOverlay').style.display = 'flex'; setTimeout(() => $('#loginKey').focus(), 50); }
+async function tryLogin() {
+  const k = $('#loginKey').value.trim();
+  if (!k) return;
+  const res = await fetch('/api/models', { headers: { 'X-Admin-Key': k } });
+  if (res.ok) {
+    AUTH_KEY = k; localStorage.setItem('cps_key', k);
+    $('#loginOverlay').style.display = 'none'; $('#loginErr').textContent = '';
+    loadAll();
+    loadUsage();
+    loadPlanUsage();
+  } else {
+    $('#loginErr').textContent = '密钥不对哦，再想想';
+  }
+}
+
+// —— Tab 切换（记忆所在页） ——
+function switchTab(name) {
+  localStorage.setItem('cps_tab', name);
+  $('#view-overview').classList.toggle('active', name === 'overview');
+  $('#view-lab').classList.toggle('active', name === 'lab');
+  $('#tab-overview').classList.toggle('active', name === 'overview');
+  $('#tab-lab').classList.toggle('active', name === 'lab');
+}
+
+// —— 数字补间：easeOutExpo，扑上来然后稳稳落定 ——
+function tween(el, to, format) {
+  if (!el) return;
+  format = format || ((n) => numShort(Math.round(n)));
+  const from = el._v || 0;
+  el._v = to;
+  if (from === to) { el.textContent = format(to); return; }
+  cancelAnimationFrame(el._raf);
+  const t0 = performance.now(), dur = 900;
+  const step = (t) => {
+    const p = Math.min(1, (t - t0) / dur);
+    const e = p === 1 ? 1 : 1 - Math.pow(2, -10 * p);
+    el.textContent = format(from + (to - from) * e);
+    if (p < 1) el._raf = requestAnimationFrame(step);
+  };
+  el._raf = requestAnimationFrame(step);
+}
+
+let statusTimer;
+function status(msg) { const el = $('#status'); el.textContent = msg; clearTimeout(statusTimer); statusTimer = setTimeout(() => el.textContent = '', 6000); }
+
+// ============================================================
+// 总览
+// ============================================================
+let USAGE = [], PLAN = null, AGG = null, LEDGER = null, RECENT_LIMIT = 30, TREND_RANGE = 30;
+// 展开状态跟着账号名走（数据持有，不由 DOM 持有）：45 秒轮询重画卡阵后，展开的卡原地保留，
+// 不再让用户正看着的账单“啪”地自己收回去。刷新中的账号集合用于按钮进行中反馈与防重入。
+const OPEN_ACCS = new Set(), REFRESHING = new Set();
+
+function aggregateUsage(rows) {
+  const sum = (k) => rows.reduce((s, r) => s + (r[k] || 0), 0);
+  const agg = (keyFn) => {
+    const map = new Map();
+    for (const r of rows) {
+      const k = keyFn(r);
+      const a = map.get(k) || { key: k, requests: 0, prompt: 0, completion: 0, cached: 0, total: 0 };
+      a.requests++; a.prompt += r.prompt || 0; a.completion += r.completion || 0; a.cached += r.cached || 0; a.total += r.total || 0;
+      map.set(k, a);
+    }
+    return [...map.values()];
+  };
+  const day = (ts) => new Date(ts).toLocaleDateString('sv');
+  return {
+    byDay: agg((r) => day(r.ts)).sort((a, b) => (a.key < b.key ? 1 : -1)),
+    byModel: agg((r) => r.model || '未知').sort((a, b) => b.total - a.total),
+    byAcc: agg((r) => r.account || '未知').sort((a, b) => b.total - a.total),
+    byAccModel: agg((r) => (r.account || '未知') + '\u0001' + (r.model || '未知')),
+    totals: { requests: rows.length, prompt: sum('prompt'), completion: sum('completion'), cached: sum('cached'), total: sum('total') },
+  };
+}
+
+function renderStatStrip() {
+  if (!AGG) return;
+  const t = AGG.totals;
+  const today = new Date().toLocaleDateString('sv');
+  const todayRow = AGG.byDay.find((d) => d.key === today);
+  // 累计/请求数/今日/峰值优先读持久账本：行缓冲是 5000 条滚动窗口，
+  // 对窗口行求和会让"累计"卡在十几亿不动（2026-10-12 修）
+  const lt = LEDGER && LEDGER.totals;
+  const daily = (LEDGER && LEDGER.daily) || {};
+  const cumTotal = lt ? lt.total : t.total;
+  const cumReq = lt ? lt.requests : t.requests;
+  const todayTotal = daily[today] ? (daily[today].total || 0) : (lt ? 0 : (todayRow ? todayRow.total : 0));
+  const peak = Object.keys(daily).length
+    ? Object.values(daily).reduce((m, d) => Math.max(m, d.total || 0), 0)
+    : AGG.byDay.reduce((m, d) => Math.max(m, d.total), 0);
+  const sinceTip = lt && lt.since
+    ? `完整累计自 ${fmtDT(lt.since)} 起（中途滚掉未找回的旧明细不计在内）`
+    : '本地账本累计';
+  const soonest = (PLAN?.accounts || []).map(periodEndMs).filter(Number.isFinite).sort((a, b) => a - b)[0];
+  const daysLeft = soonest ? Math.max(0, Math.ceil((soonest - Date.now()) / 86400000)) : null;
+  const cells = [
+    { v: cumTotal, lbl: '累计 TOKEN', hot: false, f: (n) => num(Math.round(n)), tip: sinceTip },
+    { v: cumReq, lbl: '账本请求数', hot: false, f: (n) => num(Math.round(n)), tip: sinceTip },
+    { v: todayTotal, lbl: '今日 TOKEN', hot: true, f: (n) => num(Math.round(n)), tip: '按天账本（不随明细窗口滚动）' },
+    { v: peak, lbl: '单日峰值', hot: false, f: (n) => num(Math.round(n)), tip: '持久账本里的单日最大值' },
+    { v: daysLeft ?? 0, lbl: daysLeft == null ? '最近到期' : '最近到期 · 剩 ' + daysLeft + ' 天', hot: daysLeft != null && daysLeft <= 3, f: (n) => daysLeft == null ? '—' : num(Math.round(n)) },
+  ];
+  const host = $('#statStrip');
+  const want = cells.map((c) => `<div class="stat-cell${c.hot ? ' hot' : ''}"${c.tip ? ` title="${c.tip}"` : ''}><div class="num"></div><div class="lbl">${c.lbl}</div></div>`).join('');
+  const sig = cells.length + '|' + cells[4].lbl + '|' + cells.map((c) => c.tip || '').join('|');
+  if (host._sig !== sig) {
+    host.innerHTML = want;
+    cells.forEach((c, i) => { host.children[i].querySelector('.num')._v = 0; });
+  }
+  host._sig = sig;
+  cells.forEach((c, i) => tween(host.children[i].querySelector('.num'), c.v, c.f));
+}
+
+// —— 账号席位卡 ——
+const WIN_DEFS = [['fiveHour', '5 小时'], ['weekly', '本周'], ['monthly', '本月']];
+function periodEndMs(p) {
+  if (!p) return NaN;
+  if (p.currentPeriodEnd) return Date.parse(p.currentPeriodEnd);
+  const base = p.renewStart || p.addedAt;
+  const t = base ? Date.parse(base) : NaN;
+  return Number.isFinite(t) ? t + 30 * 86400000 : NaN;
+}
+function accountCard(p, i) {
+  const wins = WIN_DEFS.map(([k, lbl]) => {
+    const w = (p.caps || {})[k] || {};
+    let bar = '', pct = '—', reset = '';
+    if (p.source === 'official') {
+      const v = Math.max(0, Math.min(100, w.percentUsed || 0));
+      const cls = v >= 80 ? '' : v >= 50 ? 'mid' : 'low';
+      bar = `<div class="w-bar"><div class="w-fill ${cls}" data-w="${v}"></div></div>`;
+      pct = v + '%';
+      if (w.resetsAt) reset = `重置 ${fmtDT(w.resetsAt)}`;
+      if (w.limitUsd != null) reset += `${reset ? ' · ' : ''}$${w.limitUsd.toFixed(0)} 上限`;
+    } else {
+      bar = `<div class="w-bar"><div class="w-fill low" data-w="0"></div></div>`;
+      pct = numShort(w.localTokens || 0);
+      reset = '本地账本估算（官方端点未响应）';
+    }
+    return `<div class="win-row"><span class="w-lbl">${lbl}</span>${bar}<span class="w-pct">${pct}</span><span class="w-reset">${reset}</span></div>`;
+  }).join('');
+  const pe = periodEndMs(p);
+  const days = Number.isFinite(pe) ? Math.ceil((pe - Date.now()) / 86400000) : null;
+  const dateStr = Number.isFinite(pe) ? new Date(pe).toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' }) : null;
+  const exp = dateStr
+    ? `<span class="acc-exp${days != null && days <= 3 ? ' soon' : ''}">${dateStr} 到期${days != null ? ' · 剩 ' + Math.max(0, days) + ' 天' : ''}</span>`
+    : '<span class="acc-exp">到期日未知</span>';
+  const src = p.source === 'official' ? '<span class="src-badge">官方账本</span>' : `<span class="src-badge est">本地估算${p.error ? ' · ' + escapeHtml(p.error).slice(0, 40) : ''}</span>`;
+  const plan = p.planName ? escapeHtml(String(p.planName).replace(/\s*\(.*\)\s*/, '')) : (p.isActive === false ? '已停用' : 'Cline Pass');
+  const st = (ACCS?.stats || {})[p.name] || {};
+  const mine = AGG ? AGG.byAcc.find((a) => a.key === p.name) : null;
+  // 卡面「本地 N 笔」读持久账本（累计口径），明细表仍走最近行窗口
+  const mineL = LEDGER && LEDGER.totals && LEDGER.totals.byAcc ? LEDGER.totals.byAcc[p.name] : null;
+  const detail = !AGG
+    ? '<div class="empty" style="padding:6px 0">本地账本装载中……</div>'
+    : (mine ? accModelTable(p.name) : '<div class="empty" style="padding:6px 0">本地账本里还没有这个账号的请求</div>');
+  const off = p.enabled === false;
+  const offBadge = off ? '<span class="acc-off-badge">已禁用</span>' : '';
+  const offReason = off ? `<div class="acc-off-reason">${escapeHtml(p.disabledReason || '已手动禁用')}${p.disabledAt ? ' · ' + fmtDT(p.disabledAt) : ''}</div>` : '';
+  const offRecover = off ? recoverLine(p) : '';
+  const enableBtn = off ? `<button class="acc-enable" title="重新加入账号池轮询" onclick="enableAccount('${escapeHtml(p.name)}', event)">✦ 重新启用</button>` : '';
+  const refreshing = REFRESHING.has(p.name);
+  return `<div class="acc-card${off ? ' off' : ''}${OPEN_ACCS.has(p.name) ? ' open' : ''}" data-i="${i}" data-name="${escapeHtml(p.name)}">
+    <div class="acc-head">
+      <span class="acc-dot ${off || p.isActive === false ? '' : p.source === 'official' ? 'live' : ''}"></span>
+      <span class="acc-name" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</span>
+      ${off ? enableBtn : `<button class="acc-refresh${refreshing ? ' busy' : ''}" data-refresh-name="${escapeHtml(p.name)}" title="${refreshing ? '正在拉取这个账号的官方账单……' : '只刷新这个账号的官方账单（其余账号不动）'}">${refreshing ? '✦' : '✦ 刷'}</button>`}
+      ${offBadge}
+      <span class="acc-plan">${plan}</span>
+    </div>
+    ${wins}
+    <div class="acc-foot">${exp}${src}<span style="margin-left:auto"${mineL ? ' title="该账号的完整累计请求数（持久账本）"' : ''}>本地 ${num(mineL ? mineL.requests : (mine ? mine.requests : 0))} 笔${st.lastError ? ' · <span class="mismatch">最近有错</span>' : ''}</span></div>
+    ${offReason}
+    ${offRecover}
+    <div class="acc-detail"><div>${detail}</div></div>
+  </div>`;
+}
+// 禁用卡片上的「什么时候能回来」：官方窗口重置时间 + 自动复检进度
+function recoverLine(p) {
+  const t = (v) => fmtDT(v);
+  const bits = [];
+  if (p.disabledKind === 'auth') bits.push('密钥无效 —— 自动恢复不接手，换 key 后手动启用');
+  else if (p.autoRecoverOn === false) bits.push('自动恢复已关（机房页可开）');
+  else if (p.recoverNextAt) bits.push(`下次自动复检 ${t(p.recoverNextAt)}`);
+  else bits.push('正在自动复检');
+  if (p.recoverTries) bits.push(`已试 ${p.recoverTries} 次`);
+  if (p.quotaResetAt) bits.push(`官方窗口重置 ${t(p.quotaResetAt)}`);
+  if (p.recoveredAt) bits.push(`上次恢复 ${t(p.recoveredAt)}`);
+  const btn = p.disabledKind === 'auth' ? '' : '<button class="acc-enable" title="不等退避时间，立刻复检一次" onclick="recoverNow(event)">✦ 立刻复检</button>';
+  return `<div class="acc-off-recover"><span>${bits.join(' · ')}</span>${btn}</div>`;
+}
+async function recoverNow(ev) {
+  if (ev && ev.stopPropagation) ev.stopPropagation();
+  const r = await api('/api/accounts/recover-now', {});
+  if (!r.ok) { status('复检失败：' + (r.error?.message || '未知错误'), true); return; }
+  const tried = (r.accounts || []).filter((a) => a.recoverLastAt);
+  const ok = tried.filter((a) => a.enabled).map((a) => a.name.split('@')[0]);
+  status(tried.length ? `复检 ${tried.length} 个：${ok.length ? '已恢复 ' + ok.join('、') : '都还没通'}` : '没有需要复检的禁用账号');
+  await loadAll();
+  loadPlanUsage(true);
+}
+async function enableAccount(name, ev) {
+  if (ev) ev.stopPropagation();
+  const acc = (ACCS?.accounts || []).find((a) => a.name === name);
+  if (!acc) return status('找不到该账号，刷新后再试');
+  const payload = {
+    accounts: ACCS.accounts.map((a) => a.name === name ? { ...a, enabled: true, disabledReason: null } : a),
+    mode: ACCS.mode, active: ACCS.active,
+  };
+  const r = await api('/api/accounts', payload);
+  if (r.ok) { status(`${name} 已重新启用`); await loadAll(); loadPlanUsage(true); }
+  else status(r.error?.message || '恢复失败', true);
+}
+function accModelTable(acc) {
+  const rows = (AGG?.byAccModel || []).filter((r) => r.key.split('\u0001')[0] === acc).map((r) => ({ model: r.key.split('\u0001')[1], ...r })).sort((a, b) => b.total - a.total);
+  if (!rows.length) return '<div class="empty" style="padding:6px 0">这个账号在本地账本里还没有模型明细</div>';
+  return `<table><thead><tr><th>模型</th><th style="text-align:right">请求</th><th style="text-align:right">输入</th><th style="text-align:right">输出</th><th style="text-align:right">合计</th></tr></thead>
+    <tbody>${rows.map((r) => `<tr><td class="mono" title="${escapeHtml(r.model)}">${escapeHtml(r.model.replace(/^cline-pass\//, ''))}</td><td class="num-cell">${num(r.requests)}</td><td class="num-cell">${numShort(r.prompt)}</td><td class="num-cell">${numShort(r.completion)}</td><td class="num-cell"><b>${numShort(r.total)}</b></td></tr>`).join('')}</tbody></table>`;
+}
+let PLAN_ERROR = '';
+function renderDeck() {
+  if (PLAN_ERROR) {
+    $('#deck').innerHTML = `<div class="empty">${escapeHtml(PLAN_ERROR)}</div>`;
+    $('#planMeta').textContent = '';
+    return;
+  }
+  const list = PLAN?.accounts || [];
+  $('#deck').innerHTML = list.length
+    ? list.map(accountCard).join('')
+    : '<div class="empty">没有可用账号 —— 到「机房 → 账号管理」添加</div>';
+  $('#planMeta').textContent = PLAN ? `官方数据 ${new Date(PLAN.at).toLocaleTimeString()} · 60 秒缓存` : '';
+  requestAnimationFrame(() => {
+    for (const el of document.querySelectorAll('.w-fill[data-w]')) el.style.width = el.dataset.w + '%';
+  });
+}
+async function refreshPlan(e) {
+  if (e) { e.stopPropagation(); }
+  status('正在向官方要最新账本……');
+  PLAN = await api('/api/plan-usage?refresh=1');
+  renderDeck(); renderStatStrip();
+  status('官方账本已更新');
+}
+// 单账号刷新：点谁的「刷」只拉谁的官方账单，其余账号沿用 60 秒缓存 —— 不再一座机房全量重打
+async function refreshAcc(name) {
+  if (REFRESHING.has(name)) return;
+  REFRESHING.add(name);
+  renderDeck(); // 立刻把按钮换成进行中样式
+  try {
+    const r = await api('/api/plan-usage?refresh=1&name=' + encodeURIComponent(name));
+    if (r && Array.isArray(r.accounts)) {
+      PLAN = r; renderDeck(); renderStatStrip();
+      status(`${name} 的官方账单已更新，其余账号未动`);
+    } else status(r?.error?.message || '刷新失败', true);
+  } catch (err) {
+    status('刷新失败：' + (err?.message || err), true);
+  } finally {
+    REFRESHING.delete(name);
+    renderDeck();
+  }
+}
+
+// —— 星图 ——
+const STAR_STEPS = [
+  { max: 0, s: 0, c: 'transparent' },
+  { s: 9, c: '#574b59' }, { s: 13, c: '#97899d' }, { s: 17, c: '#c2b8c8' }, { s: 21, c: '#e6c6d0' }, { s: 25, c: '#cf4a63' },
+];
+function starLevel(v, max) { return v <= 0 ? 0 : Math.max(1, Math.min(5, Math.ceil((v / max) * 5))); }
+function renderSky() {
+  const host = $('#sky'), axis = $('#skyAxis'), legend = $('#skyLegend');
+  const dayMap = new Map();
+  // 星图优先读持久按天账本（能画满全史，不再被 5000 行窗口截断）；没有账本时退回行窗口
+  const hasLedger = LEDGER && LEDGER.daily && Object.keys(LEDGER.daily).length > 0;
+  if (hasLedger) { for (const [k, d] of Object.entries(LEDGER.daily)) dayMap.set(k, d); }
+  else for (const d of AGG.byDay) dayMap.set(d.key, d);
+  const days = [];
+  let span = Math.min(35, Math.max(14, AGG.byDay.length));
+  const keys = [...dayMap.keys()].sort();
+  if (keys.length) {
+    const t0 = new Date();
+    const oldest = new Date(keys[0] + 'T00:00:00');
+    span = Math.min(35, Math.max(14, Math.round((new Date(t0.getFullYear(), t0.getMonth(), t0.getDate()) - oldest) / 86400000) + 1));
+  }
+  const today = new Date();
+  for (let i = span - 1; i >= 0; i--) {
+    const dt = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+    days.push({ key: dt.toLocaleDateString('sv'), label: dt });
+  }
+  const max = Math.max(1, ...days.map((d) => dayMap.get(d.key)?.total || 0));
+  host.innerHTML = days.map((d) => {
+    const rec = dayMap.get(d.key);
+    const v = rec ? rec.total : 0;
+    const st = STAR_STEPS[starLevel(v, max)];
+    return `<div class="star-cell" data-day="${d.key}" data-v="${v}" data-req="${rec ? rec.requests : 0}">
+      ${v > 0 ? `<div class="star" style="--s:${st.s}px; --c:${st.c}"></div>` : '<div class="halo"></div>'}
+    </div>`;
+  }).join('');
+  axis.innerHTML = days.filter((_, i) => i % 7 === 0 || i === days.length - 1).map((d) => `<span>${d.label.getMonth() + 1}·${d.label.getDate()}</span>`).join('');
+  legend.innerHTML = '少 ' + [1, 2, 3, 4, 5].map((l) => `<div class="star" style="--s:${STAR_STEPS[l].s - 8}px; --c:${STAR_STEPS[l].c}"></div>`).join('') + ' 多';
+}
+const skyTip = $('#skyTip');
+document.addEventListener('mousemove', (e) => {
+  const cell = e.target.closest?.('.star-cell');
+  if (!cell) { skyTip.classList.remove('on'); return; }
+  const v = Number(cell.dataset.v);
+  skyTip.innerHTML = `${cell.dataset.day} · <b>${num(v)}</b> token · ${cell.dataset.req} 笔`;
+  skyTip.style.left = Math.min(window.innerWidth - 180, e.clientX + 14) + 'px';
+  skyTip.style.top = (e.clientY - 38) + 'px';
+  skyTip.classList.add('on');
+});
+
+// —— 丝带折线 ——
+const TREND_COLORS = ['#cf4a63', '#c2b8c8', '#e6c6d0', '#9a5872', '#6f5f7f'];
+function setTrendRange(n) {
+  TREND_RANGE = n;
+  document.querySelectorAll('.range-btn').forEach((b) => b.classList.toggle('active', Number(b.dataset.r) === n));
+  renderTrend();
+}
+function smoothPath(pts) {
+  if (pts.length < 2) return '';
+  let d = `M ${pts[0][0]},${pts[0][1]}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
+    const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+    d += ` C ${c1x},${c1y} ${c2x},${c2y} ${p2[0]},${p2[1]}`;
+  }
+  return d;
+}
+let TREND_MODEL = null;
+function renderTrend() {
+  const svg = $('#trendSvg'), legend = $('#trendLegend'), tip = $('#trendTip');
+  const H = 190, W = 1000, padT = 14, padB = 22, padL = 8, padR = 8;
+  // 数据源：持久按天账本（带 byModel 分模型，全史）优先；没有账本时退回行窗口
+  const dayModel = new Map();
+  let allDays, modelTotals;
+  const hasLedger = LEDGER && LEDGER.daily && Object.keys(LEDGER.daily).length > 0;
+  if (hasLedger) {
+    allDays = Object.keys(LEDGER.daily).sort().map((k) => ({
+      key: k, total: LEDGER.daily[k].total || 0, requests: LEDGER.daily[k].requests || 0, byModel: LEDGER.daily[k].byModel || {},
+    }));
+    for (const d of allDays) {
+      for (const [m, v] of Object.entries(d.byModel)) dayModel.set(d.key + '\u0001' + m, v.total || 0);
+    }
+    const ltm = (LEDGER.totals && LEDGER.totals.byModel) || null;
+    modelTotals = ltm
+      ? new Map(Object.entries(ltm).map(([m, v]) => [m, v.total || 0]))
+      : new Map(Object.entries(allDays.reduce((acc, d) => { for (const [m, v] of Object.entries(d.byModel)) acc[m] = (acc[m] || 0) + (v.total || 0); return acc; }, {})));
+  } else {
+    allDays = AGG.byDay.slice().reverse().map((d) => ({ key: d.key, total: d.total, requests: d.requests }));
+    for (const r of USAGE) {
+      const k = new Date(r.ts).toLocaleDateString('sv') + '\u0001' + (r.model || '未知');
+      dayModel.set(k, (dayModel.get(k) || 0) + (r.total || 0));
+    }
+    modelTotals = new Map(AGG.byModel.map((m) => [m.key, m.total]));
+  }
+  let days = allDays; // 旧 → 新
+  if (TREND_RANGE > 0) days = days.slice(-TREND_RANGE);
+  const models = [...modelTotals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4).map(([m]) => m);
+  legend.innerHTML = models.map((m, i) => `<span><i style="background:${TREND_COLORS[i]}"></i>${escapeHtml(m.replace(/^cline-pass\//, ''))}</span>`).join('');
+  const seriesData = models.map((m) => days.map((d) => dayModel.get(d.key + '\u0001' + m) || 0));
+  const max = Math.max(1, ...seriesData.flat());
+  const n = days.length;
+  const x = (i) => padL + (n <= 1 ? (W - padL - padR) / 2 : (i * (W - padL - padR)) / (n - 1));
+  const y = (v) => padT + (1 - v / max) * (H - padT - padB);
+  let out = `<line x1="0" y1="${H - padB}" x2="${W}" y2="${H - padB}" stroke="#2a2129" stroke-width="1"/>`;
+  for (let g = 1; g <= 3; g++) {
+    const gy = padT + (g / 4) * (H - padT - padB);
+    out += `<line x1="0" y1="${gy}" x2="${W}" y2="${gy}" stroke="#221a22" stroke-width="1" stroke-dasharray="2 6"/>`;
+  }
+  seriesData.forEach((vals, si) => {
+    const pts = vals.map((v, i) => [x(i), y(v)]);
+    if (pts.length === 1) out += `<circle cx="${pts[0][0]}" cy="${pts[0][1]}" r="4" fill="${TREND_COLORS[si]}"/>`;
+    else {
+      out += `<path d="${smoothPath(pts)} L ${pts[pts.length - 1][0]},${H - padB} L ${pts[0][0]},${H - padB} Z" fill="${TREND_COLORS[si]}" opacity="0.06" stroke="none"/>`;
+      out += `<path id="tl${si}" d="${smoothPath(pts)}" fill="none" stroke="${TREND_COLORS[si]}" stroke-width="1.8" stroke-linecap="round" vector-effect="non-scaling-stroke"/>`;
+    }
+  });
+  out += `<line id="trendCursor" x1="0" y1="${padT}" x2="0" y2="${H - padB}" stroke="#c2b8c8" stroke-width="1" opacity="0" />`;
+  out += days.map((d, i) => `<circle class="tp" data-i="${i}" cx="${x(i)}" cy="${H - padB}" r="7" fill="transparent" stroke="none"/>`).join('');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = out;
+  svg._ctx = { days, models, seriesData, x, y, W, H, padB };
+  svg.onmousemove = (ev) => {
+    const rect = svg.getBoundingClientRect();
+    const px = ((ev.clientX - rect.left) / rect.width) * W;
+    let best = 0, bd = 1e9;
+    for (let i = 0; i < n; i++) { const d = Math.abs(x(i) - px); if (d < bd) { bd = d; best = i; } }
+    const cur = $('#trendCursor');
+    cur.setAttribute('x1', x(best)); cur.setAttribute('x2', x(best)); cur.setAttribute('opacity', '.35');
+    const day = days[best];
+    const rowsHtml = models.map((m, si) => `<div class="tt-row"><span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${TREND_COLORS[si]};margin-right:6px"></i>${escapeHtml(m.replace(/^cline-pass\//, ''))}</span><b>${numShort(seriesData[si][best])}</b></div>`).join('');
+    const dayTotal = days[best];
+    tip.innerHTML = `<div class="tt-day">${day.key} · ${numShort(dayTotal ? dayTotal.total : 0)} token</div>${rowsHtml}`;
+    const wrap = $('#trendWrap');
+    const lx = Math.min(wrap.clientWidth - 170, (x(best) / W) * wrap.clientWidth + 10);
+    tip.style.left = lx + 'px';
+    tip.style.top = '8px';
+    tip.classList.add('on');
+  };
+  svg.onmouseleave = () => { tip.classList.remove('on'); const cur = $('#trendCursor'); if (cur) cur.setAttribute('opacity', '0'); };
+}
+
+// —— 缎带 ——
+function renderRibbon() {
+  const host = $('#ribbon'), body = $('#rbBody');
+  // 缎带=全局模型分配：优先读持久账本的全量模型汇总；没有时退回行窗口
+  const ltm = LEDGER && LEDGER.totals && LEDGER.totals.byModel;
+  const list = ltm
+    ? Object.entries(ltm).map(([key, v]) => ({ key, requests: v.requests || 0, prompt: v.prompt || 0, completion: v.completion || 0, cached: v.cached || 0, total: v.total || 0 })).sort((a, b) => b.total - a.total).slice(0, 6)
+    : AGG.byModel.slice(0, 6);
+  const sum = list.reduce((s, m) => s + m.total, 0) || 1;
+  if (!list.length) { host.innerHTML = '<div class="empty">暂无数据</div>'; body.innerHTML = ''; return; }
+  host.innerHTML = list.map((m, i) => `<div class="rb-seg" data-m="${escapeHtml(m.key)}" style="--g:${m.total}; --c:${TREND_COLORS[i % TREND_COLORS.length]}"><span>${((m.total / sum) * 100).toFixed(1)}%</span></div>`).join('');
+  body.innerHTML = list.map((m, i) => {
+    const pct = (m.total / sum) * 100;
+    return `<tr data-m="${escapeHtml(m.key)}">
+      <td><span class="rb-swatch" style="background:${TREND_COLORS[i % TREND_COLORS.length]}"></span><span class="mono" title="${escapeHtml(m.key)}">${escapeHtml(m.key)}</span></td>
+      <td class="num-cell">${num(m.requests)}</td>
+      <td class="num-cell">${num(m.prompt)}<span class="faint">（${numShort(m.cached)} 缓存）</span></td>
+      <td class="num-cell">${num(m.completion)}</td>
+      <td class="num-cell"><b>${num(m.total)}</b></td>
+      <td class="num-cell"><span class="rb-pct">${pct.toFixed(1)}%</span></td>
+    </tr>`;
+  }).join('') || '<tr><td class="empty">暂无数据</td></tr>';
+  const hl = (on, key) => {
+    for (const seg of host.children) seg.style.opacity = (!on || seg.dataset.m === key) ? '' : '.28';
+    for (const tr of body.querySelectorAll('tr[data-m]')) tr.classList.toggle('hl', on && tr.dataset.m === key);
+  };
+  host.onmouseover = (e) => { const seg = e.target.closest('.rb-seg'); if (seg) hl(true, seg.dataset.m); };
+  host.onmouseleave = () => hl(false);
+  body.onmouseover = (e) => { const tr = e.target.closest('tr[data-m]'); if (tr) hl(true, tr.dataset.m); };
+  body.onmouseleave = () => hl(false);
+}
+
+// —— 最近明细（100 条，融合了尝试序列与实际上游） ——
+function setRecentLimit(n) {
+  RECENT_LIMIT = n;
+  document.querySelectorAll('.seg-btn').forEach((b) => b.classList.toggle('active', Number(b.dataset.n) === n));
+  renderRecent();
+}
+function renderRecent() {
+  const f = ($('#recentFilter').value || '').toLowerCase();
+  const rows = USAGE.filter((r) => !f || [r.model, r.account, r.provider, r.canonical].some((v) => v && String(v).toLowerCase().includes(f))).slice(0, RECENT_LIMIT);
+  $('#detailNote').textContent = `融合了实际上游与尝试序列 · 明细保留最近 ${num(USAGE.length)} 条（累计看顶部统计条）`;
+  $('#recentBody').innerHTML = rows.length ? rows.map((r) => `<tr>
+      <td class="dim" style="white-space:nowrap">${fmtDT(r.ts)}</td>
+      <td class="mono" title="${escapeHtml(r.model || '')}">${escapeHtml((r.model || '—').replace(/^cline-pass\//, ''))}</td>
+      <td>${r.account ? '<span class="badge">' + escapeHtml(r.account.split('@')[0]) + '</span>' : '<span class="faint">—</span>'}</td>
+      <td>${r.provider ? '<span class="badge">' + escapeHtml(r.provider) + '</span>' : '<span class="faint">—</span>'}</td>
+      <td class="mono faint" title="${escapeHtml(r.canonical || '')}">${escapeHtml(r.canonical || '—')}</td>
+      <td>${r.stream ? '流式' : '非流式'}</td>
+      <td class="num-cell">${r.ms != null ? r.ms + ' ms' : '—'}</td>
+      <td class="attempts-cell" title="${escapeHtml((r.attempts || []).join(' → '))}">${escapeHtml((r.attempts || []).join(' → ') || '—')}</td>
+      <td class="num-cell">${num(r.prompt)}<span class="faint">（${numShort(r.cached)}）</span></td>
+      <td class="num-cell">${num(r.completion)}</td>
+      <td class="num-cell"><b>${num(r.total)}</b></td>
+    </tr>`).join('') : '<tr><td colspan="11" class="empty">暂无记录 —— 把客户端 Base URL 指向代理地址即可自动记账</td></tr>';
+}
+
+async function loadUsage() {
+  try {
+    const res = await api('/api/usage');
+    USAGE = res.usage || [];
+    LEDGER = res.totals ? { totals: res.totals, daily: res.daily || {} } : null;
+  } catch { return; }
+  AGG = aggregateUsage(USAGE);
+  renderStatStrip(); renderDeck(); renderSky(); renderTrend(); renderRibbon(); renderRecent();
+}
+async function loadPlanUsage(force) {
+  PLAN_ERROR = '';
+  try {
+    const res = await fetch('/api/plan-usage' + (force ? '?refresh=1' : ''), { headers: AUTH_KEY ? { 'X-Admin-Key': AUTH_KEY } : {} });
+    if (res.status === 401) { showLogin(); return; }
+    if (res.status === 404) {
+      // 页面是新版本、服务是旧版本：plan-usage 接口不存在
+      PLAN_ERROR = '账号席位需要新版后端支持 —— 服务还在跑旧程序。双击「停止V2.bat」再「启动V2.bat」，然后刷新本页就好';
+      renderDeck();
+      return;
+    }
+    PLAN = await res.json();
+  } catch {
+    PLAN_ERROR = '用量服务暂时没应答（服务没在跑？）——稍后自动重试';
+    renderDeck();
+    return;
+  }
+  if (!AGG) return; // 启动竞态：本地账本聚合未就绪时先不渲染席位卡
+  renderDeck(); renderStatStrip();
+}
+
+// ============================================================
+// 机房（订阅模型 / 测速 / 账号 / 安全）
+// ============================================================
+const ST_TAG = { ok: '✔可用', limited: '⏳限流', bad: '✘不可钉', auth: '🔑key错' };
+const ST_CLS = { ok: 'ok', limited: 'limited', bad: 'bad', auth: 'auth' };
+
+function sortedUpstreams(meta, sort) {
+  const list = [...(meta?.upstreams || [])];
+  if (!['cost', 'ttft', 'tps'].includes(sort)) return list;
+  return list.sort((a, b) => {
+    const av = meta?.upstreamDetail?.[a]?.[sort], bv = meta?.upstreamDetail?.[b]?.[sort];
+    const hasA = Number.isFinite(av), hasB = Number.isFinite(bv);
+    if (!hasA || !hasB) return Number(hasB) - Number(hasA);
+    return sort === 'tps' ? bv - av : av - bv;
+  });
+}
+function metricText(d, sort) {
+  const n = (v) => v.toLocaleString('en-US', { maximumFractionDigits: 6 });
+  if (sort === 'cost') return Number.isFinite(d?.cost)
+    ? `输入 $${n(d.input)} / 输出 $${n(d.output)} /百万 token · 合计 $${n(d.cost)}` : '';
+  if (sort === 'ttft') return Number.isFinite(d?.ttft) ? `首字 P50 ${n(d.ttft)} ms` : '';
+  if (sort === 'tps') return Number.isFinite(d?.tps) ? `吞吐 P50 ${n(d.tps)} token/s` : '';
+  return '';
+}
+function metricsNote(meta, sort) {
+  const details = Object.values(meta?.upstreamDetail || {}).filter((d) => Number.isFinite(d?.[sort]));
+  if (!sort || !details.length || !['planner', 'direct'].includes(meta?.pipeline)) return '';
+  const source = meta.pipeline === 'planner' ? 'Vercel' : 'OpenRouter';
+  const window = meta.pipeline === 'planner' ? '近 1 小时' : '近 30 分钟';
+  const fetchedAt = Math.max(0, ...details.map((d) => d.fetchedAt || 0));
+  if (!fetchedAt) return '';
+  const time = ' · 采集 ' + new Date(fetchedAt).toLocaleString();
+  const basis = sort === 'cost' ? '按输入 1M + 输出 1M token 的基础报价合计升序；阶梯、缓存及峰时价格以网关为准。'
+    : '按' + window + ' P50 ' + (sort === 'ttft' ? '首字延迟升序' : '吞吐降序') + '。';
+  return source + time + '。' + basis + ' 多 endpoint 取该指标最优值。列表排序不改变已保存的尝试顺序。';
+}
+function upstreamOptions(meta, selected, sort) {
+  let html = '<option value="">自动（不指定上游）</option>';
+  for (const u of sortedUpstreams(meta, sort)) {
+    const stMap = (meta && meta.upstreamStatus) || {};
+    const detail = (meta && meta.upstreamDetail) || {};
+    const d = detail[u];
+    const st = stMap[u]?.status;
+    const tag = st && ST_TAG[st] ? ' · ' + ST_TAG[st] : '';
+    const label = d ? `${u}（${d.name}${d.endpoints > 1 ? ' ×' + d.endpoints : ''}${tag}）` : `${u}${tag}`;
+    html += `<option value="${escapeHtml(u)}" ${u === selected ? 'selected' : ''}>${escapeHtml(label)}</option>`;
+  }
+  return html;
+}
+function upstreamPanel(id, meta, cfg) {
+  const ups = sortedUpstreams(meta, cfg.sort);
+  const stMap = (meta && meta.upstreamStatus) || {};
+  const detail = (meta && meta.upstreamDetail) || {};
+  const selected = cfg.upstreams || [];
+  const excSet = new Set(cfg.exclude || []);
+  const rows = ups.map((u, index) => {
+    const d = detail[u];
+    const st = stMap[u]?.status;
+    const no = selected.indexOf(u);
+    const isSel = no >= 0;
+    const isEx = excSet.has(u);
+    const stTxt = st && ST_TAG[st] ? ST_TAG[st] : '';
+    const stCls = ST_CLS[st] || 'unknown';
+    return `<div class="uprow${isEx ? ' excluded' : ''}" data-m="${id}" data-u="${u}" data-stat="${stTxt}" data-statcls="${stCls}">
+      <span class="uprank" title="当前列表排名" aria-label="列表排名 ${index + 1}">#${index + 1}</span>
+      <span class="upno" title="优先级顺序（尝试顺序）">${no >= 0 ? no + 1 : ''}</span>
+      <span class="upinfo"><span class="upslug mono">${escapeHtml(u)}${meta?.watchedUpstreams?.includes(u) ? ' · 已监查' : ''}</span><span class="upname" title="${escapeHtml(d?.name || '')}">${escapeHtml(d?.name || '')}${d && d.endpoints > 1 ? ' ×' + d.endpoints : ''}</span>${metricText(d, cfg.sort) ? `<span class="upmetric">${metricText(d, cfg.sort)}</span>` : ''}</span>
+      <span class="upstat ${isEx ? 'excl' : stCls}">${isEx ? '🚫已排除' : stTxt}</span>
+      <button class="pill${isSel ? ' prio-on' : ''}" title="优先：加入尝试序列（异常自动顺切下一个）；再点一次取消" onclick="toggleUp('${id}','sel','${u}',${isSel ? 'false' : 'true'})">优先</button>
+      <button class="pill${isEx ? ' excl-on' : ''}" title="排除：该上游永不被使用；再点一次取消" onclick="toggleUp('${id}','excl','${u}',${isEx ? 'false' : 'true'})">排除</button>
+      <button class="ghost mini arrow-btn" style="${isSel ? '' : 'display:none'}" onclick="moveUp('${id}','${u}')" title="上移提高优先级">↑</button>
+      <button class="ghost mini arrow-btn" style="${isSel ? '' : 'display:none'}" onclick="moveDown('${id}','${u}')" title="下移降低优先级">↓</button>
+      <button class="ghost mini" data-delete-model="${escapeHtml(id)}" data-delete-upstream="${escapeHtml(u)}" title="从此模型删除上游">删除</button>
+    </div>`;
+  }).join('');
+  return `<details class="ups-wrap">
+    <summary><span class="ups-sum">${summaryChips(cfg, meta)}</span></summary>
+    <div class="ups-panel">${metricsNote(meta, cfg.sort) ? `<div class="metrics-note">${escapeHtml(metricsNote(meta, cfg.sort))}</div>` : ''}${rows || '<div class="empty">尚未探测到上游，先点「探测」</div>'}
+      <div class="ups-tools">
+        <button class="ghost mini" onclick="bulkUp('${id}','all')" title="按当前面板顺序加入优先序列">全选优先</button>
+        <button class="ghost mini" onclick="bulkUp('${id}','clear')" title="清空优先与排除（回到自动）">清空</button>
+        <span class="dim" style="font-size:11px; align-self:center;">点「优先」按序尝试（异常自动顺切）；点「排除」永不使用</span>
+      </div>
+    </div>
+  </details>`;
+}
+function summaryChips(cfg, meta) {
+  const ups = cfg.upstreams || [];
+  const exc = cfg.exclude || [];
+  const strategy = { cost: '最低成本', ttft: '最快首字', tps: '最高吞吐' }[cfg.sort] || '网关智能选择';
+  let html = cfg.accountPin
+    ? `<span class="sum-chip" title="账号钉选：该模型固定只发给这个号；满额后自动重锁到三窗最宽裕的号">🔒 ${escapeHtml(shortAcc(cfg.accountPin))}</span>`
+    : '';
+  html += !ups.length ? `<span class="sum-auto">自动 · ${strategy}</span>` : '';
+  for (let i = 0; i < Math.min(ups.length, 4); i++) html += `<span class="sum-chip">${i + 1}&nbsp;${escapeHtml(ups[i])}</span>`;
+  if (ups.length > 4) html += `<span class="sum-chip sum-more">+${ups.length - 4}</span>`;
+  if (exc.length) html += `<span class="sum-chip sum-ex">✕ ${exc.length}</span>`;
+  if (meta?.probedAt && meta?.lastProvider) html += `<span class="sum-chip">探测命中：${escapeHtml(meta.lastProvider)}</span>`;
+  return html;
+}
+
+let LAST_ADDED = [];
+function render() {
+  const testModel = $('#testModel').value;
+  const testUpstream = $('#testUpstream').value;
+  $('#proxyBase').textContent = '代理地址：' + DATA.proxyBase + '（点击复制）';
+  const rows = DATA.subscription.map((s) => {
+    const m = s.meta;
+    const ups = (m?.upstreams?.length ?? null);
+    const last = m?.lastProvider ? `<span class="badge">${m.lastProvider}</span>` : '<span class="faint">未探测</span>';
+    const canon = m?.canonicalSlug ? `<span class="mono faint">${m.canonicalSlug}</span>` : '<span class="faint">—</span>';
+    const tier0 = m?.tier0?.length ? `<div class="faint" style="font-size:11px">tier-0: ${m.tier0.join(', ')}</div>` : '';
+    const pipe = m?.pinnable ? `<span class="badge green">可精确钉住·${m.pipeline === 'planner' ? 'Vercel' : 'OpenRouter'}</span>` : '<span class="badge warn">请先探测</span>';
+    const mode = s.config.pinMode || 'strict';
+    const sort = s.config.sort || '';
+    const accPin = s.config.accountPin || '';
+    const pinState = s.pinState || null;
+    return `<tr${LAST_ADDED.includes(s.id) ? ' class="row-new"' : ''} data-id="${s.id}">
+      <td class="mono">${s.id}<div style="margin-top:4px">${pipe}</div>${tier0}</td>
+      <td>${canon}</td>
+      <td>${ups === null ? '<span class="faint">—</span>' : ups}</td>
+      <td>${last}${m?.lastMs ? `<div class="faint" style="font-size:11px">${m.lastMs} ms</div>` : ''}</td>
+      <td>
+        ${upstreamPanel(s.id, m, s.config)}
+      </td>
+      <td>
+        <div><select onchange="saveCfg('${s.id}','pinMode',this.value)" title="严格：逐个只钉勾选的上游；优先：当前上游排 order 首位，其余勾选项作为网关侧回退">
+          <option value="strict" ${mode === 'strict' ? 'selected' : ''}>严格钉住</option>
+          <option value="preferred" ${mode === 'preferred' ? 'selected' : ''}>优先+回退</option>
+        </select></div>
+        <select onchange="saveCfg('${s.id}','sort',this.value)" style="margin-top:4px" title="按指标排序上游（不选上游时也可单独使用）">
+          <option value="" ${!sort ? 'selected' : ''}>网关智能选</option>
+          <option value="cost" ${sort === 'cost' ? 'selected' : ''}>最低成本</option>
+          <option value="ttft" ${sort === 'ttft' ? 'selected' : ''}>最快首字</option>
+          <option value="tps" ${sort === 'tps' ? 'selected' : ''}>最高吞吐</option>
+        </select>
+        <div style="margin-top:4px"><select class="acc-pin" onchange="saveCfg('${s.id}','accountPin',this.value)" title="账号钉选（留空=正常轮询）：该模型的请求固定只发给这一个号。提示缓存按号隔离的模型（如 k3）必须钉住才吃得到缓存价；钉住的号额度满/熔断后自动重锁到三窗（5h/周/月）最宽裕的号，绝不退回轮询">
+          <option value="" ${!accPin ? 'selected' : ''}>账号钉选（留空=正常轮询）</option>
+          ${(ACCS?.accounts || []).map((a) => `<option value="${escapeHtml(a.name)}" ${accPin === a.name ? 'selected' : ''}>${a.enabled === false ? '【禁用】' : ''}🔒 ${escapeHtml(shortAcc(a.name))}</option>`).join('')}
+        </select>
+        ${pinState?.relocked ? `<div class="mismatch" style="font-size:11px; margin-top:2px">已重锁 → ${escapeHtml(shortAcc(pinState.current))}（首选 ${escapeHtml(shortAcc(pinState.pinned))} 满额/熔断中）</div>` : ''}</div>
+      </td>
+      <td><div class="row-actions">
+        <button class="ghost" onclick="probe('${s.id}', this)">探测</button>
+        <button class="ghost" onclick="test('${s.id}', this)">测试</button>
+        <button class="ghost" onclick="validate('${s.id}', this)" title="把每个上游渠道各钉一次最小请求，标出可用/限流/不可钉">校验</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+  $('#subBody').innerHTML = rows;
+
+  $('#testModel').innerHTML = DATA.subscription.map((s) => `<option value="${s.id}">${s.id}</option>`).join('');
+  if (DATA.subscription.some((s) => s.id === testModel)) $('#testModel').value = testModel;
+  onTestModelChange();
+  if ([...$('#testUpstream').options].some((o) => o.value === testUpstream)) $('#testUpstream').value = testUpstream;
+  const speedModel = $('#speedModel').value;
+  const speedUpstream = $('#speedUpstreams').dataset.model === speedModel ? selectedSpeedUpstreams() : null;
+  $('#speedModel').innerHTML = DATA.subscription.map((s) => `<option value="${escapeHtml(s.id)}">${escapeHtml(s.id)}</option>`).join('');
+  if (DATA.subscription.some((s) => s.id === speedModel)) $('#speedModel').value = speedModel;
+  onSpeedModelChange(speedUpstream);
+
+  $('#catSummary').textContent = `展开（共 ${DATA.catalogCount} 个目录模型）`;
+  const of = DATA.officialFetch;
+  $('#officialInfo').textContent = of ? `上次拉取 ${new Date(of.ts).toLocaleString()}（${(of.sources || []).join('+')}，新增 ${of.added.length}）` : '尚未拉取过官方清单';
+  renderCatalog();
+}
+
+function renderCatalog() {
+  const f = ($('#catFilter').value || '').toLowerCase();
+  const list = DATA.catalog.filter((id) => !f || id.toLowerCase().includes(f)).slice(0, 400);
+  $('#catBody').innerHTML = list.map((id) => {
+    const m = DATA.subscription.find((s) => s.id === id)?.meta;
+    const pinnable = id.includes(':free');
+    return `<tr><td class="mono">${id}</td><td>${pinnable ? '<span class="badge green">:free 可精确钉住</span>' : '<span class="badge warn">规划器管理</span>'}</td>
+    <td>${m?.lastProvider ? '<span class="badge">' + m.lastProvider + '</span>' : ''}</td>
+    <td><button class="ghost" onclick="probe('${id}', this)">探测</button></td></tr>`;
+  }).join('') || '<tr><td class="empty">无匹配</td></tr>';
+}
+
+async function loadAll(fromUser) {
+  const [models, accs, sec, meta] = await Promise.all([api('/api/models'), api('/api/accounts'), api('/api/security'), api('/api/meta')]);
+  DATA = models;
+  ACCS = accs;
+  render();
+  renderAccounts();
+  renderSecurity(sec);
+  $('#noKeyBanner').style.display = meta.configured ? 'none' : 'block';
+  setLive(true, '账本在线');
+  if (fromUser) status('数据已刷新');
+}
+function setLive(on, txt) {
+  $('#liveDot').classList.toggle('on', !!on);
+  $('#liveTxt').textContent = txt || (on ? '账本在线' : '账本待命');
+}
+
+function renderSecurity(sec) {
+  $('#secProxyKey').value = sec.proxyKey || '';
+  $('#secPublicBase').value = sec.publicBaseUrl || '';
+  const badge = $('#secBadge');
+  badge.textContent = sec.authRequired ? '鉴权已开启' : '鉴权已关闭';
+  badge.className = sec.authRequired ? 'badge green' : 'badge warn';
+  const ec = $('#exposeCatalog');
+  if (ec) ec.checked = !!sec.exposeCatalog;
+}
+async function saveExposeCatalog(v) {
+  const r = await api('/api/security', { exposeCatalog: v });
+  if (r.ok) secMsg(v ? '已开启：/v1/models 将包含全部目录模型' : '已关闭：/v1/models 仅返回订阅模型');
+  else secMsg(r.error?.message || '保存失败', true);
+}
+async function saveSecurity() {
+  const payload = { proxyKey: $('#secProxyKey').value.trim(), publicBaseUrl: $('#secPublicBase').value.trim() };
+  const r = await api('/api/security', payload);
+  if (r.ok) {
+    if (r.proxyKey) { AUTH_KEY = r.proxyKey; localStorage.setItem('cps_key', r.proxyKey); }
+    renderSecurity(r);
+    DATA.proxyBase = r.proxyBase;
+    $('#proxyBase').textContent = '代理地址：' + r.proxyBase + '（点击复制）';
+    secMsg('已保存' + (r.authRequired ? '，鉴权开启' : '，鉴权已关闭（任何客户端都可访问代理）'));
+  } else secMsg(r.error?.message || '保存失败', true);
+}
+function secMsg(msg, isErr) {
+  const el = $('#secMsg');
+  el.textContent = msg;
+  el.style.color = isErr ? 'var(--red)' : 'var(--green)';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.textContent = ''; }, 8000);
+}
+
+async function probe(id, btn) {
+  btn.disabled = true; btn.textContent = '探测中…'; status('正在探测 ' + id);
+  const r = await api('/api/probe', { model: id });
+  btn.disabled = false; btn.textContent = '探测';
+  status(r.ok ? `${id} 探测完成：上游 ${r.upstreams?.length ?? 0} 个，命中 ${r.lastProvider}` : `探测失败：${r.error}`);
+  await loadAll();
+}
+async function probeAll() {
+  const btn = $('#probeAllBtn'); btn.disabled = true;
+  for (const s of DATA.subscription) {
+    btn.textContent = `探测中 ${s.id}`;
+    await api('/api/probe', { model: s.id });
+  }
+  btn.disabled = false; btn.textContent = '批量探测订阅模型';
+  await loadAll();
+}
+async function test(id, btn) {
+  btn.disabled = true; btn.textContent = '测试中…';
+  const tr = btn.closest('tr');
+  const sel = [...(DATA.subscription.find((s) => s.id === id)?.config.upstreams || [])];
+  const excl = [...tr.querySelectorAll('.uprow')].filter((r) => r.querySelector('.pill.excl-on')).map((r) => r.dataset.u);
+  const body = { model: id };
+  if (sel.length || excl.length || tr.querySelector('.uprow')) { body.upstreams = sel; body.exclude = excl; }
+  const r = await api('/api/test', body);
+  btn.disabled = false; btn.textContent = '测试';
+  showTest(r, id, sel);
+}
+async function fetchOfficial(btn) {
+  btn.disabled = true; btn.textContent = '拉取中…';
+  const el = $('#fetchResult');
+  try {
+    const r = await api('/api/fetch-official-models', {});
+    LAST_ADDED = r.added || [];
+    el.style.display = 'block';
+    el.innerHTML = `<div class="kvs">
+      <div>拉取时间 <b>${new Date().toLocaleTimeString()}</b></div>
+      <div>来源 <b>${r.sources.join(' + ') || '无可用来源'}</b></div>
+      <div>官方清单 <b>${r.found} 个</b></div>
+      <div>新增 <b class="${r.added.length ? 'match' : 'faint'}">${r.added.length} 个</b></div>
+      <div>合并后 <b>${r.knownModels.length} 个</b></div>
+    </div>${r.added.length ? '✔ 检测到新模型，已加入下方列表并高亮显示：' + r.added.join('、') : '✔ 清单已是最新：官方渠道 ' + r.found + ' 个模型均已覆盖，现有 ' + r.knownModels.length + ' 个订阅模型保持不变。'}`;
+    await loadAll();
+    setTimeout(() => { LAST_ADDED = []; }, 6000);
+  } catch (e) {
+    el.style.display = 'block';
+    el.innerHTML = '<span class="mismatch">拉取失败，请稍后重试</span>';
+  }
+  btn.disabled = false; btn.textContent = '⬇ 拉取官方最新模型';
+}
+async function validate(id, btn) {
+  btn.disabled = true; btn.textContent = '校验中…';
+  status(`正在校验 ${id} 的全部上游渠道（约需 1 分钟）…`);
+  try {
+    const r = await api('/api/validate-upstreams', { model: id });
+    status(`校验完成：✔可用 ${r.summary.ok} · ⏳限流 ${r.summary.limited} · ✘不可钉 ${r.summary.bad} · 🔑key错 ${r.summary.auth} · 未判定 ${r.summary.unknown}（下拉框已标注并排序）`);
+  } catch (e) {
+    status('校验失败');
+  }
+  btn.disabled = false; btn.textContent = '校验';
+  await loadAll();
+}
+async function runTest() {
+  const btn = $('#testBtn'); btn.disabled = true; btn.textContent = '发送中…';
+  const model = $('#testModel').value, up = $('#customUpstream').value.trim() || $('#testUpstream').value || null;
+  try {
+    if (up && !validUpstream(up)) throw new Error('请输入有效上游 slug，如 deepinfra 或 open-inference');
+    const r = await api('/api/test', { model, upstreams: up ? [up] : [], exclude: [], pinMode: 'strict' });
+    showTest(r, model, up ? [up] : []);
+  } catch (e) {
+    showTest({ ok: false, error: e.message }, model, up && validUpstream(up) ? [up] : []);
+  } finally {
+    btn.disabled = false; btn.textContent = '发送测试';
+  }
+}
+
+let SPEED_BUSY = false, SPEED_RESULTS = [], SPEED_SORT = 'generationSpeed';
+function selectedSpeedUpstreams() {
+  return [...$('#speedUpstreams').querySelectorAll('input:checked')].map((input) => input.value);
+}
+function onSpeedModelChange(selected = null) {
+  const model = $('#speedModel').value;
+  const s = DATA.subscription.find((s) => s.id === model);
+  const providers = sortedUpstreams(s?.meta, s?.config.sort);
+  $('#speedUpstreams').dataset.model = model;
+  $('#speedUpstreams').innerHTML = providers.length
+    ? providers.map((u) => `<label><input type="checkbox" value="${escapeHtml(u)}" ${selected === null || selected.includes(u) ? 'checked' : ''} ${SPEED_BUSY ? 'disabled' : ''} onchange="updateSpeedButton()"> ${escapeHtml(u)}</label>`).join('')
+    : '<span class="faint">请先探测供应商</span>';
+  updateSpeedButton();
+}
+function updateSpeedButton() {
+  $('#speedBtn').disabled = SPEED_BUSY || !selectedSpeedUpstreams().length;
+}
+function selectSpeedUpstreams(checked) {
+  if (SPEED_BUSY) return;
+  for (const input of $('#speedUpstreams').querySelectorAll('input')) input.checked = checked;
+  updateSpeedButton();
+}
+function speedBusy(busy) {
+  SPEED_BUSY = busy;
+  for (const id of ['speedModel', 'speedBtn', 'speedProbeBtn', 'speedAllBtn', 'speedNoneBtn']) $('#' + id).disabled = busy;
+  for (const input of $('#speedUpstreams').querySelectorAll('input')) input.disabled = busy;
+  updateSpeedButton();
+}
+async function probeSpeedModel() {
+  const model = $('#speedModel').value;
+  speedBusy(true);
+  const el = $('#speedResult'); el.style.display = 'block'; el.textContent = '正在探测供应商…';
+  try {
+    const r = await api('/api/probe', { model });
+    if (!r.ok) throw new Error(r.error || '探测失败');
+    const s = DATA.subscription.find((s) => s.id === model);
+    if (s) s.meta = r;
+    render();
+    onSpeedModelChange();
+    el.textContent = `${model} 已更新供应商列表`;
+  } catch (e) { el.textContent = e.message; }
+  finally { speedBusy(false); }
+}
+async function runSpeedTest() {
+  const model = $('#speedModel').value, upstreams = selectedSpeedUpstreams();
+  if (SPEED_BUSY || !model || !upstreams.length) return;
+  speedBusy(true);
+  SPEED_SORT = '';
+  SPEED_RESULTS = upstreams.map((upstream) => ({ model, upstream, state: '等待中' }));
+  renderSpeedTable();
+  try {
+    for (let i = 0; i < upstreams.length; i++) {
+      SPEED_RESULTS[i].state = '测速中';
+      renderSpeedTable();
+      try {
+        const r = await api('/api/speed-test', { model, upstream: upstreams[i] });
+        SPEED_RESULTS[i] = { ...r, model, upstream: upstreams[i], state: r.ok ? '完成' : '失败' };
+      } catch (e) {
+        SPEED_RESULTS[i] = { model, upstream: upstreams[i], state: '失败', error: e.message };
+      }
+      renderSpeedTable();
+    }
+  } finally {
+    speedBusy(false);
+    SPEED_SORT = 'generationSpeed';
+    renderSpeedTable();
+  }
+}
+const SPEED_COLUMNS = [
+  ['generationSpeed', '生成速度', 'token/s'], ['perceivedSpeed', '体感均速', 'token/s'], ['firstPacketMs', '首包延迟', 'ms'],
+  ['input', '价格（输入）', '$'], ['output', '价格（输出）', '$'], ['cacheRead', '价格（缓存读）', '$'],
+  ['uptime5m', '可用(5m)', '%'], ['uptime15m', '可用(15m)', '%'], ['uptimeDay', '可用(1d)', '%']
+];
+function speedTableRows() {
+  const rows = SPEED_RESULTS.flatMap((r) => {
+    const offers = r.ok && r.detail?.offers?.length ? r.detail.offers : [{}];
+    return offers.map((offer) => ({ ...r, ...offer,
+      uptime5m: r.detail?.source === 'OpenRouter' ? offer.uptimeShort : null,
+      uptime15m: r.detail?.source === 'Vercel' ? offer.uptimeShort : null }));
+  });
+  if (SPEED_SORT) rows.sort((a, b) => {
+    const av = a[SPEED_SORT], bv = b[SPEED_SORT];
+    if (!Number.isFinite(av)) return Number.isFinite(bv) ? 1 : 0;
+    if (!Number.isFinite(bv)) return -1;
+    return SPEED_SORT === 'firstPacketMs' ? av - bv : bv - av;
+  });
+  return rows;
+}
+function sortSpeedTable(key) {
+  if (!SPEED_COLUMNS.some(([name]) => name === key)) return;
+  SPEED_SORT = key;
+  renderSpeedTable();
+}
+function renderSpeedTable() {
+  const el = $('#speedResult'); el.style.display = 'block';
+  const rows = speedTableRows();
+  const columns = SPEED_COLUMNS.filter(([key]) => rows.some((r) => Number.isFinite(r[key])));
+  const completed = SPEED_RESULTS.filter((r) => r.state === '完成' || r.state === '失败').length;
+  const number = (v, unit) => (unit === '$' ? '$' : '') + v.toLocaleString('en-US', { maximumFractionDigits: unit === '$' ? 6 : 2 }) + (unit === '%' ? '%' : '');
+  el.innerHTML = `<div>模型：${escapeHtml(SPEED_RESULTS[0]?.model || '')} · 已完成 ${completed}/${SPEED_RESULTS.length}</div>
+    <div class="faint">价格：美元/百万 token；多端点分行列出公开报价与可用性，测速数值属于该供应商本次请求。缺失数据留空，排序置后。</div>
+    <div class="speed-table-wrap"><table><thead><tr><th>排名</th><th>上游 / 端点</th><th>状态</th>${columns.map(([key, label, unit]) => `<th aria-sort="${SPEED_SORT === key ? (key === 'firstPacketMs' ? 'ascending' : 'descending') : 'none'}"><button class="ghost" onclick="sortSpeedTable('${key}')">${label.replace('价格（', '').replace('）', '')} ${key === 'firstPacketMs' ? '↑' : '↓'}${unit === 'token/s' || unit === 'ms' ? '<br><span class="faint">' + unit + '</span>' : ''}</button></th>`).join('')}</tr></thead>
+    <tbody>${rows.map((r, i) => `<tr><td>#${i + 1}</td><td>${escapeHtml(r.upstream)}${r.endpoint ? '<div class="faint">' + escapeHtml(r.endpoint) + '</div>' : ''}</td>
+      <td${r.state === '失败' ? ' class="mismatch"' : ''}>${escapeHtml(r.state || (r.ok ? '完成' : '失败'))}</td>
+      ${columns.map(([key, , unit]) => `<td class="speed-number">${Number.isFinite(r[key]) ? number(r[key], unit) : ''}</td>`).join('')}
+      </tr>`).join('')}</tbody></table></div>
+    <details class="speed-notes"><summary>查看来源与生成正文</summary>${SPEED_RESULTS.filter((r) => r.ok && (r.detail || r.preview)).map((r) => `<details><summary>${escapeHtml(r.upstream)}${r.detail ? ' · ' + escapeHtml(r.detail.source) : ''}</summary>
+      ${r.detail ? '<div class="faint">采集时间：' + escapeHtml(new Date(r.detail.fetchedAt).toLocaleString()) + '</div>' : ''}
+      ${r.actual ? '<div>实际：' + escapeHtml(r.actual) + '</div>' : ''}
+      ${r.preview ? '<div>' + escapeHtml(r.preview) + '</div>' : ''}</details>`).join('')}</details>`;
+}
+function onTestModelChange() {
+  const m = DATA.subscription.find((s) => s.id === $('#testModel').value);
+  $('#testUpstream').innerHTML = upstreamOptions(m?.meta, null, m?.config.sort);
+}
+function validUpstream(value) {
+  return typeof value === 'string' && value.length <= 128
+    && /^[a-z0-9][a-z0-9._-]*(?:\/[a-z0-9][a-z0-9._-]*)*$/.test(value)
+    && !['__proto__', 'constructor', 'prototype'].includes(value);
+}
+function providerButton(model, upstream) {
+  return `<button class="provider-link" data-watch-model="${escapeHtml(model)}" data-watch-upstream="${escapeHtml(upstream)}" title="加入此模型的监查列表">${escapeHtml(upstream)}</button>`;
+}
+function highlightProviders(text, model, providers) {
+  const names = [...new Set(providers.filter(validUpstream))].sort((a, b) => b.length - a.length);
+  if (!names.length) return escapeHtml(text);
+  const pattern = new RegExp('(?<![a-z0-9._/-])(' + names.map((s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')(?![a-z0-9_/-]|\\.[a-z0-9])', 'g');
+  let html = '', offset = 0;
+  for (const match of String(text).matchAll(pattern)) {
+    html += escapeHtml(String(text).slice(offset, match.index)) + providerButton(model, match[0]);
+    offset = match.index + match[0].length;
+  }
+  return html + escapeHtml(String(text).slice(offset));
+}
+async function watchUpstream(model, upstream, btn) {
+  if (!model || !validUpstream(upstream)) return status('请选择模型并填写有效上游 slug');
+  if (btn) btn.disabled = true;
+  try {
+    const r = await api('/api/watch-upstream', { model, upstream });
+    if (!r.ok) throw new Error(r.error || '添加失败');
+    const s = DATA.subscription.find((s) => s.id === model);
+    if (s) s.meta = r.meta;
+    render();
+    status(`${model} 已监查 ${upstream}`);
+    if (btn) btn.textContent = `${upstream} · 已加入`;
+  } catch (e) {
+    status(e.message);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+async function watchCustomUpstream(btn) {
+  await watchUpstream($('#testModel').value, $('#customUpstream').value.trim() || $('#testUpstream').value, btn);
+  btn.textContent = '加入监查列表';
+}
+async function deleteUpstream(model, upstream, btn) {
+  btn.disabled = true;
+  try {
+    const r = await api('/api/delete-upstream', { model, upstream });
+    if (!r.ok) throw new Error(r.error || '删除失败');
+    const s = DATA.subscription.find((s) => s.id === model);
+    if (s) { s.meta = r.meta; s.config = r.config; }
+    render();
+    const wrap = document.querySelector(`#subBody tr[data-id="${model}"] .ups-wrap`);
+    if (wrap) wrap.open = true;
+    status(`${model} 已删除 ${upstream}`);
+  } catch (e) {
+    status(e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+function traceHtml(trace, model) {
+  if (!trace?.length) return '';
+  const parts = trace.map((t) => `<span class="tr ${t.status === 200 ? 'ok' : 'bad'}">${t.status !== 200 && validUpstream(t.upstream) ? providerButton(model, t.upstream) : escapeHtml(t.upstream || 'auto')}(${t.status === 200 ? '✔' : '✗' + t.status} ${t.ms}ms${t.note && t.status !== 200 && t.note !== 'ok' ? ' · ' + escapeHtml(String(t.note).slice(0, 60)) : ''})</span>`);
+  return `<div class="trace">尝试序列：${parts.join(' → ')}</div>`;
+}
+function showTest(r, model, target) {
+  const el = $('#testResult'); el.style.display = 'block';
+  const targets = Array.isArray(target) ? target : target ? [target] : [];
+  if (!r.ok) {
+    const providers = [...new Set([...(r.errorProviders || []), ...targets, ...(r.trace || []).map((t) => t.upstream)].filter(validUpstream))];
+    el.innerHTML = `<div class="faint">模型：${escapeHtml(model)} · 点击上游名称加入对应模型的监查列表</div><span class="mismatch">请求失败：${highlightProviders(r.error || '', model, providers)}</span>${traceHtml(r.trace, model)}<div>${providers.map((u) => providerButton(model, u)).join(' ')}</div>`;
+    return;
+  }
+  const hit = !targets.length || r.actual === targets[0];
+  const hitExcluded = Array.isArray(r.exclude) && r.exclude.length && r.exclude.includes(r.actual);
+  el.innerHTML = `<div class="kvs">
+      <div>模型 <b class="mono">${model}</b></div>
+      <div>目标上游 <b>${targets.length ? targets.join(' → ') : '自动'}</b></div>
+      <div>实际上游 <b class="${hit && !hitExcluded ? 'match' : 'mismatch'}">${r.actual || '未知'}</b></div>
+      <div>耗时 <b>${r.ms} ms</b></div>
+    </div>${traceHtml(r.trace, model)}
+    ${hitExcluded ? `<div class="mismatch">⚠ 排除未生效：命中了被排除的上游 ${r.actual}（该渠道可能不在本地已知清单内，或网关未遵守白名单；先点「探测」刷新渠道列表再试）</div>` : hit ? '✔ 上游匹配，选择已生效。' : (r.actual ? '✘ 未命中首个目标上游：渠道可能限流或不可钉（点「校验」检查全部渠道）；严格模式失败会直接报错，可改用「优先+回退」。' : '该模型响应未携带上游信息，无法回读实际上游。')}
+    <div class="faint" style="margin-top:6px">回复：${escapeHtml(r.content || '(空)')}　·　背后模型：${r.canonicalSlug || '—'}　·　管道：${r.pipeline === 'direct' ? '直连(OpenRouter)' : r.pipeline === 'planner' ? '规划器(Vercel)' : '未知'}</div>`;
+}
+async function saveModelCfg(id, patch) {
+  const s = DATA.subscription.find((x) => x.id === id);
+  if (!s) return;
+  const cfg = s.config;
+  const full = {
+    upstreams: patch.upstreams !== undefined ? patch.upstreams : (cfg.upstreams || []),
+    exclude: patch.exclude !== undefined ? patch.exclude : (cfg.exclude || []),
+    pinMode: patch.pinMode !== undefined ? patch.pinMode : (cfg.pinMode || 'strict'),
+    sort: patch.sort !== undefined ? patch.sort : (cfg.sort || null),
+    accountPin: patch.accountPin !== undefined ? patch.accountPin : (cfg.accountPin ?? null),
+  };
+  try {
+    const r = await api('/api/config', { perModel: { [id]: full } });
+    if (r.ok) {
+      cfg.upstreams = full.upstreams; cfg.exclude = full.exclude; cfg.pinMode = full.pinMode; cfg.sort = full.sort;
+      cfg.accountPin = full.accountPin;
+      status(`${id} 配置已保存`);
+    } else {
+      status(`${id} 保存失败：${r.error?.message || '未知错误'}`);
+      await loadAll();
+    }
+  } catch {
+    await loadAll();
+  }
+}
+async function saveCfg(id, field, value) {
+  const patch = {};
+  if (field === 'pinMode') patch.pinMode = value || 'strict';
+  else if (field === 'sort') patch.sort = value || null;
+  else if (field === 'accountPin') patch.accountPin = value || null;
+  await saveModelCfg(id, patch);
+  if (field === 'accountPin') {
+    // 旧版服务不认 accountPin（保存会被静默丢掉）：回读核对，丢了就明确提示，别让用户以为钉上了
+    try {
+      const c = await api('/api/config');
+      const got = c.perModel?.[id]?.accountPin ?? null;
+      if (got !== (value || null)) {
+        status('⚠ 账号钉选没有保存上：服务是旧版本（双击 停止V2.bat → 启动V2.bat 后可用）');
+        return;
+      }
+    } catch { /* 回读失败不打扰 */ }
+    const s = DATA.subscription.find((s) => s.id === id);
+    if (s) s.config.accountPin = value || null;
+    status(value ? `${id} 已锁定账号 ${shortAcc(value)}（满额后自动重锁到最宽裕的号）` : `${id} 已解除账号钉选`);
+    return;
+  }
+  if (field === 'sort') {
+    const s = DATA.subscription.find((s) => s.id === id);
+    const wrap = document.querySelector(`#subBody tr[data-id="${id}"] .ups-wrap`);
+    if (wrap && s) {
+      const open = wrap.open;
+      wrap.outerHTML = upstreamPanel(id, s.meta, s.config);
+      document.querySelector(`#subBody tr[data-id="${id}"] .ups-wrap`).open = open;
+      onTestModelChange();
+    }
+  }
+}
+function updateRowUi(id) {
+  const s = DATA.subscription.find((x) => x.id === id);
+  if (!s) return;
+  const cfg = s.config;
+  const selected = cfg.upstreams || [];
+  const excSet = new Set(cfg.exclude || []);
+  const tr = document.querySelector(`#subBody tr[data-id="${id}"]`);
+  if (!tr) return render();
+  tr.querySelectorAll('.uprow').forEach((row) => {
+    const u = row.dataset.u;
+    const no = selected.indexOf(u);
+    const isEx = excSet.has(u);
+    const pills = row.querySelectorAll('.pill');
+    if (pills[0]) {
+      pills[0].classList.toggle('prio-on', no >= 0);
+      pills[0].setAttribute('onclick', `toggleUp('${id}','sel','${u}',${no >= 0 ? 'false' : 'true'})`);
+    }
+    if (pills[1]) {
+      pills[1].classList.toggle('excl-on', isEx);
+      pills[1].setAttribute('onclick', `toggleUp('${id}','excl','${u}',${isEx ? 'false' : 'true'})`);
+    }
+    row.classList.toggle('excluded', isEx);
+    row.querySelector('.upno').textContent = no >= 0 ? String(no + 1) : '';
+    row.querySelectorAll('.arrow-btn').forEach((b) => { b.style.display = no >= 0 ? '' : 'none'; });
+    const stat = row.querySelector('.upstat');
+    if (isEx) { stat.textContent = '🚫已排除'; stat.className = 'upstat excl'; }
+    else { stat.textContent = row.dataset.stat || ''; stat.className = 'upstat ' + (row.dataset.statcls || 'unknown'); }
+  });
+  const sum = tr.querySelector('.ups-sum');
+  if (sum) sum.innerHTML = summaryChips(cfg, s.meta);
+  const selects = tr.cells[5].querySelectorAll('select');
+  if (selects[0]) selects[0].value = cfg.pinMode || 'strict';
+  if (selects[1]) selects[1].value = cfg.sort || '';
+  if (selects[2]) selects[2].value = cfg.accountPin || '';
+}
+function toggleUp(id, kind, u, on) {
+  const s = DATA.subscription.find((x) => x.id === id);
+  if (!s) return;
+  const cfg = s.config;
+  let ups = [...(cfg.upstreams || [])];
+  let exc = [...(cfg.exclude || [])];
+  if (kind === 'sel') {
+    if (on) { if (!ups.includes(u)) ups.push(u); exc = exc.filter((x) => x !== u); }
+    else ups = ups.filter((x) => x !== u);
+  } else {
+    if (on) { if (!exc.includes(u)) exc.push(u); ups = ups.filter((x) => x !== u); }
+    else exc = exc.filter((x) => x !== u);
+  }
+  cfg.upstreams = ups; cfg.exclude = exc;
+  updateRowUi(id);
+  saveModelCfg(id, { upstreams: ups, exclude: exc });
+}
+function moveUpDown(id, u, dir) {
+  const s = DATA.subscription.find((x) => x.id === id);
+  if (!s) return;
+  const ups = [...(s.config.upstreams || [])];
+  const i = ups.indexOf(u);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= ups.length) return;
+  [ups[i], ups[j]] = [ups[j], ups[i]];
+  s.config.upstreams = ups;
+  updateRowUi(id);
+  saveModelCfg(id, { upstreams: ups });
+}
+const moveUp = (id, u) => moveUpDown(id, u, -1);
+const moveDown = (id, u) => moveUpDown(id, u, 1);
+function bulkUp(id, action) {
+  const s = DATA.subscription.find((x) => x.id === id);
+  if (!s) return;
+  if (action === 'all') {
+    const ups = sortedUpstreams(s.meta, s.config.sort).filter((u) => !(s.config.exclude || []).includes(u));
+    s.config.upstreams = ups;
+    updateRowUi(id);
+    saveModelCfg(id, { upstreams: ups });
+  } else {
+    s.config.upstreams = []; s.config.exclude = [];
+    updateRowUi(id);
+    saveModelCfg(id, { upstreams: [], exclude: [] });
+  }
+}
+
+let ACCS = null;
+// 禁用原因的一句话摘要（完整原因在 title 里）
+function offHint(a) {
+  if (a.disabledKind === 'auth') return '密钥无效 · 要换 key';
+  if (ACCS && ACCS.autoRecover === false) return '自动恢复已关';
+  return a.recoverNextAt ? `待复检 ${fmt(a.recoverNextAt)}` : '自动复检中';
+}
+function renderAccounts() {
+  if (!ACCS) return;
+  $('#accMode').value = ACCS.mode;
+  const ar = $('#accAutoRecover');
+  if (ar) ar.checked = ACCS.autoRecover !== false;
+  const show = $('#accShowKeys').checked;
+  const rows = ACCS.accounts.map((a, i) => {
+    const st = (ACCS.stats || {})[a.name] || {};
+    const checked = ACCS.mode === 'single' && i === ACCS.active;
+    return `<tr>
+      <td><input type="radio" name="accActive" data-i="${i}" ${checked ? 'checked' : ''} ${ACCS.mode !== 'single' ? 'disabled title="账号池自动调度（轮询/额度调度）下由服务端选号"' : 'title="单账号模式下使用此账号"'}></td>
+      <td><input class="accName" data-i="${i}" value="${escapeHtml(a.name)}" style="width:110px; font-size:12.5px"></td>
+      <td><input class="accKey" data-i="${i}" type="${show ? 'text' : 'password'}" value="${escapeHtml(a.key)}" style="width:100%; min-width:280px; font-family:Consolas, monospace; font-size:12px"></td>
+      <td><input type="checkbox" class="accEnabled" data-i="${i}" ${a.enabled !== false ? 'checked' : ''}>${a.enabled === false ? `<div class="dim" style="font-size:11px; margin-top:2px" title="${escapeHtml(a.disabledReason || '已手动禁用')}">${escapeHtml(offHint(a))}</div>` : ''}</td>
+      <td><input class="accRenew" data-i="${i}" type="date" value="${escapeHtml((a.renewStart || '').slice(0, 10))}" title="月付起算日；留空按导入日（${a.addedAt ? a.addedAt.slice(0, 10) : '未知'}）估算" style="font-size:12px"></td>
+      <td>${st.requests ?? 0}${st.lastError ? '<div class="mismatch" style="font-size:11px">最近有错误</div>' : ''}</td>
+      <td class="dim" style="font-size:12px">${st.lastUsed ? fmt(st.lastUsed) : '—'}</td>
+      <td><div class="row-actions">
+        <button class="ghost" onclick="testAccount(${i}, this)">测试</button>
+        <button class="ghost" onclick="delAccount(${i})">删除</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+  $('#accBody').innerHTML = rows || '<tr><td colspan="8" class="empty">暂无账号，点击「＋ 添加账号」</td></tr>';
+}
+function collectAccounts() {
+  const mode = $('#accMode').value;
+  const accs = ACCS.accounts.map((a, i) => ({
+    name: document.querySelector(`.accName[data-i="${i}"]`)?.value?.trim() || a.name,
+    key: document.querySelector(`.accKey[data-i="${i}"]`)?.value?.trim() || '',
+    enabled: document.querySelector(`.accEnabled[data-i="${i}"]`)?.checked !== false,
+    renewStart: document.querySelector(`.accRenew[data-i="${i}"]`)?.value || null,
+    addedAt: a.addedAt,
+  }));
+  const checked = document.querySelector('input[name="accActive"]:checked');
+  const active = checked ? parseInt(checked.dataset.i) : Math.min(ACCS.active ?? 0, Math.max(0, accs.length - 1));
+  return { accounts: accs, mode, active, autoRecover: $('#accAutoRecover')?.checked !== false };
+}
+async function saveAccounts() {
+  const payload = collectAccounts();
+  if (!payload.accounts.filter((a) => a.key).length) { accMsg('至少需要一个 key 非空的账号', true); return; }
+  const r = await api('/api/accounts', payload);
+  if (r.ok) {
+    const label = { single: '单账号', roundrobin: '轮询', smart: '额度调度' }[r.mode] || r.mode;
+    const stale = payload.mode !== r.mode ? '（服务是旧版本不认这个模式：先双击停止V2.bat再启动V2.bat）' : '';
+    accMsg(`已保存：${r.accounts} 个账号 · ${label}模式${stale}`);
+    await loadAll(); loadPlanUsage(true);
+  } else accMsg(r.error?.message || '保存失败', true);
+}
+function addAccountRow() {
+  const cur = collectAccounts();
+  cur.accounts.push({ name: `账号${cur.accounts.length + 1}`, key: '', enabled: true, renewStart: null });
+  ACCS.accounts = cur.accounts; ACCS.mode = cur.mode; ACCS.active = cur.active;
+  renderAccounts();
+  const last = document.querySelectorAll('.accKey');
+  if (last.length) last[last.length - 1].focus();
+}
+function delAccount(i) {
+  const cur = collectAccounts();
+  cur.accounts.splice(i, 1);
+  ACCS.accounts = cur.accounts; ACCS.mode = cur.mode; ACCS.active = Math.min(cur.active, Math.max(0, cur.accounts.length - 1));
+  renderAccounts();
+}
+async function testAccount(i, btn) {
+  collectAccounts();
+  const acc = ACCS.accounts[i];
+  if (!acc.key) { accMsg('请先填写该账号的 key', true); return; }
+  btn.disabled = true; btn.textContent = '测试中…'; accMsg(`正在测试 ${acc.name} …`);
+  const r = await api('/api/accounts/test', { key: acc.key });
+  btn.disabled = false; btn.textContent = '测试';
+  accMsg(r.ok ? `✔ ${acc.name} 可用（${r.ms} ms）${r.note ? ' · ' + r.note : ''}` : `✘ ${acc.name} 不可用：${r.error}`, !r.ok);
+}
+function toggleKeyVis() {
+  const show = $('#accShowKeys').checked;
+  document.querySelectorAll('.accKey').forEach((el) => { el.type = show ? 'text' : 'password'; });
+}
+async function autoTrim(btn) {
+  btn.disabled = true; btn.textContent = '体检中…（每号一条小请求）';
+  try {
+    const r = await api('/api/accounts/auto-trim', {});
+    const lines = r.results.map((x) => `${x.name.split('@')[0]}：${x.ok ? '✔ 可用' : '✘ ' + (x.kind === 'quota' ? '额度满' : x.kind === 'auth' ? '密钥坏' : '网络/未知')}${x.disabled ? ' · 已自动禁用' : ''}${x.recovered ? ' · 已恢复放回轮询' : ''}（${x.ms} ms）`);
+    accMsg(lines.join('　') || '没有账号可体检');
+    const n = r.results.filter((x) => x.disabled).length;
+    const nr = r.results.filter((x) => x.recovered).length;
+    if (n || nr) status(`体检完成：禁用 ${n} 个${nr ? ' · 恢复放回 ' + nr + ' 个' : ''}`);
+  } catch (e) { accMsg('体检失败：' + e.message, true); }
+  btn.disabled = false; btn.textContent = '✦ 体检并禁用失效账号';
+  await loadAll();
+  loadPlanUsage(true);
+}
+function accMsg(msg, isErr) {  const el = $('#accMsg');
+  el.textContent = msg;
+  el.style.color = isErr ? 'var(--red)' : 'var(--green)';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.textContent = ''; }, 8000);
+}
+
+// ============================================================
+// 绑定与启动
+// ============================================================
+$('#proxyBase').onclick = () => navigator.clipboard.writeText(DATA.proxyBase).then(() => status('已复制代理地址'));
+$('#testModel').addEventListener('change', onTestModelChange);
+$('#speedModel').addEventListener('change', () => onSpeedModelChange());
+$('#testResult').addEventListener('click', (event) => {
+  const btn = event.target.closest('button[data-watch-upstream]');
+  if (btn) watchUpstream(btn.dataset.watchModel, btn.dataset.watchUpstream, btn);
+});
+$('#subBody').addEventListener('click', (event) => {
+  const btn = event.target.closest('button[data-delete-upstream]');
+  if (btn) deleteUpstream(btn.dataset.deleteModel, btn.dataset.deleteUpstream, btn);
+});
+$('#catFilter').addEventListener('input', renderCatalog);
+$('#recentFilter').addEventListener('input', renderRecent);
+$('#loginKey').addEventListener('keydown', (e) => { if (e.key === 'Enter') tryLogin(); });
+$('#deck').addEventListener('click', (e) => {
+  const refreshBtn = e.target.closest('[data-refresh-name]');
+  if (refreshBtn) { refreshAcc(refreshBtn.dataset.refreshName); return; }
+  if (e.target.closest('.acc-enable')) return; // 自己有 onclick + stopPropagation
+  const card = e.target.closest('.acc-card');
+  if (!card) return;
+  if (e.target.closest('.acc-detail')) return; // 明细区留给选字复制，点了不收起
+  const name = card.dataset.name;
+  if (!name) return;
+  if (OPEN_ACCS.has(name)) OPEN_ACCS.delete(name); else OPEN_ACCS.add(name);
+  card.classList.toggle('open');
+});
+switchTab(new URLSearchParams(location.search).get('tab') === 'lab' ? 'lab' : (localStorage.getItem('cps_tab') || 'overview'));
+const numToggle = $('#numToggle');
+const syncNumToggle = () => { numToggle.textContent = NUM_MODE === 'short' ? '数字：简写' : '数字：完整'; };
+numToggle.onclick = () => {
+  NUM_MODE = NUM_MODE === 'short' ? 'full' : 'short';
+  localStorage.setItem('cps_num', NUM_MODE);
+  syncNumToggle();
+  renderStatStrip(); renderDeck(); renderRibbon(); renderRecent();
+};
+syncNumToggle();
+
+// 仅当服务端开启鉴权且本地没有已保存的密钥时才弹登录框
+(async () => {
+  try {
+    const meta = await (await fetch('/api/meta')).json();
+    if (meta.authRequired && !AUTH_KEY) showLogin();
+    else loadAll().catch(() => {});
+  } catch {
+    loadAll().catch(() => {});
+  }
+})();
+loadUsage();
+loadPlanUsage();
+// 轻量自刷新：官方账本 60s 缓存 + 本地账本 45s，页面隐藏时不打扰
+setInterval(() => { if (!document.hidden) { loadPlanUsage(); loadUsage(); } }, 45000);
+</script>
+</body>
+</html>
